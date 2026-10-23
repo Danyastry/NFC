@@ -4,4 +4,10 @@
     <string name="nfc_status_ready">NFC is on. This phone can read cards and act as one.</string>
     <string name="nfc_status_ready_without_hce">NFC is on. This phone can read cards but cannot emulate one.</string>
     <string name="nfc_status_open_settings">Open settings</string>
+    <string name="nfc_hce_service_description">NFC Pay Lab virtual card</string>
+    <string name="nfc_hce_aid_group">NFC Pay Lab payment application</string>
+    <string name="nfc_exchange_status">SW %1$s · %2$s</string>
+    <string name="nfc_exchange_command">Command</string>
+    <string name="nfc_exchange_response">Response</string>
+    <string name="nfc_exchange_hidden">Raw response hidden: it carries real card data</string>
 </resources>
