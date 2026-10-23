@@ -28,3 +28,5 @@ include(":app")
 include(":core:emv")
 include(":core:nfc")
 include(":core:ui")
+
+include(":feature:terminal")

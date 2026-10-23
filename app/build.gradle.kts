@@ -27,6 +27,8 @@ dependencies {
     implementation(projects.core.nfc)
     implementation(projects.core.ui)
 
+    implementation(projects.feature.terminal)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)

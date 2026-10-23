@@ -1,0 +1,123 @@
+package com.danyastry.nfcpay.feature.terminal.ui
+
+import com.danyastry.nfcpay.core.emv.card.CryptogramType
+import com.danyastry.nfcpay.core.emv.card.DemoCards
+import com.danyastry.nfcpay.core.emv.card.VirtualCard
+import com.danyastry.nfcpay.core.emv.terminal.TerminalError
+import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
+import com.danyastry.nfcpay.core.emv.transport.CardTransport
+import com.danyastry.nfcpay.feature.terminal.model.CardSource
+import com.danyastry.nfcpay.feature.terminal.model.TerminalPhase
+import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import java.io.Closeable
+import java.io.IOException
+import java.time.LocalDate
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class TerminalViewModelTest {
+
+    private val card = VirtualCard(DemoCards.lab)
+    private lateinit var viewModel: TerminalViewModel
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        viewModel = TerminalViewModel(card, today = { LocalDate.of(2026, 10, 23) })
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `a simulated tap runs the kernel against the virtual card`() = runTest {
+        viewModel.onAmountChange("7.25")
+        viewModel.onTap()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertThat(state.phase).isEqualTo(TerminalPhase.IDLE)
+        val tap = state.lastTap!!
+        assertThat(tap.amount).isEqualTo(725)
+        assertThat(tap.maskCardData).isFalse()
+        assertThat((tap.result.outcome as TransactionOutcome.Completed).decision).isEqualTo(CryptogramType.ARQC)
+        assertThat(card.atc).isEqualTo(1)
+    }
+
+    @Test
+    fun `an invalid amount blocks the tap`() = runTest {
+        viewModel.onAmountChange("1.234")
+        viewModel.onTap()
+
+        assertThat(viewModel.state.value.canTap).isFalse()
+        assertThat(viewModel.state.value.lastTap).isNull()
+        assertThat(card.atc).isEqualTo(0)
+    }
+
+    @Test
+    fun `a real card tap waits for the card and masks its data`() = runTest {
+        viewModel.onSourceChange(CardSource.NFC)
+        viewModel.onTap()
+        assertThat(viewModel.state.value.phase).isEqualTo(TerminalPhase.WAITING_FOR_CARD)
+
+        var closed = false
+        viewModel.onCardPresented {
+            object : CardTransport, Closeable {
+                override suspend fun transceive(command: ByteArray) = card.process(command)
+                override fun close() {
+                    closed = true
+                }
+            }
+        }
+        advanceUntilIdle()
+
+        val tap = viewModel.state.value.lastTap!!
+        assertThat(tap.source).isEqualTo(CardSource.NFC)
+        assertThat(tap.maskCardData).isTrue()
+        assertThat(tap.result.outcome).isInstanceOf(TransactionOutcome.Completed::class.java)
+        assertThat(closed).isTrue()
+    }
+
+    @Test
+    fun `cards presented while not waiting are ignored`() = runTest {
+        var opened = false
+        viewModel.onCardPresented {
+            opened = true
+            CardTransport { card.process(it) }
+        }
+
+        assertThat(opened).isFalse()
+        assertThat(viewModel.state.value.lastTap).isNull()
+    }
+
+    @Test
+    fun `a card that cannot be opened ends as lost`() = runTest {
+        viewModel.onSourceChange(CardSource.NFC)
+        viewModel.onTap()
+        viewModel.onCardPresented { throw IOException("Tag was lost") }
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.lastTap!!.result.outcome).isEqualTo(TransactionOutcome.Failed(TerminalError.CARD_LOST))
+        assertThat(viewModel.state.value.phase).isEqualTo(TerminalPhase.IDLE)
+    }
+
+    @Test
+    fun `cancel stops waiting`() = runTest {
+        viewModel.onSourceChange(CardSource.NFC)
+        viewModel.onTap()
+        viewModel.onCancel()
+
+        assertThat(viewModel.state.value.phase).isEqualTo(TerminalPhase.IDLE)
+    }
+}
