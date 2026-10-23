@@ -1,0 +1,15 @@
+package com.danyastry.nfcpay.core.emv.terminal
+
+enum class TerminalError {
+    NO_SUPPORTED_APPLICATION,
+    PROCESSING_OPTIONS_REFUSED,
+    MISSING_AIP_OR_AFL,
+    BAD_AFL,
+    READ_RECORD_FAILED,
+    MISSING_CDOL1,
+    GENERATE_AC_FAILED,
+    MISSING_CRYPTOGRAM,
+    MISSING_PAN,
+    MALFORMED_RESPONSE,
+    CARD_LOST,
+}
