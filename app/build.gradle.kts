@@ -28,6 +28,8 @@ dependencies {
     implementation(projects.core.ui)
 
     implementation(projects.feature.terminal)
+    implementation(projects.feature.card)
+    implementation(projects.feature.tlv)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

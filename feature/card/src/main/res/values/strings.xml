@@ -1,0 +1,21 @@
+<resources>
+    <string name="card_expiry">Expires %1$s</string>
+    <string name="card_aid">AID %1$s</string>
+    <string name="card_test_only">Test card: its PAN starts with 9 and its AID is private, so real terminals ignore it.</string>
+    <string name="card_atc">Transaction counter: %1$d</string>
+    <string name="card_atc_hint">The card adds one at every GET PROCESSING OPTIONS and signs it into each cryptogram</string>
+    <string name="card_reset_counter">Reset</string>
+    <string name="card_hce_title">Host card emulation</string>
+    <string name="card_hce_unavailable">This device cannot emulate a card over NFC. The payment terminal screen talks to this same card over the simulated link, and every command shows up below.</string>
+    <string name="card_hce_default">NFC Pay Lab is the default payment app. A terminal that selects its AID reaches this card.</string>
+    <string name="card_hce_not_default">Android sends payment taps only to the default payment app.</string>
+    <string name="card_make_default">Make default</string>
+    <string name="card_log_title">Commands answered: %1$d</string>
+    <string name="card_log_empty">No commands yet. Run a tap on the payment terminal screen.</string>
+    <string name="card_clear_log">Clear</string>
+    <string name="card_sw">SW %1$s · %2$s</string>
+    <string name="card_command">C: %1$s</string>
+    <string name="card_response">R: %1$s</string>
+    <string name="card_source_simulated">Simulated</string>
+    <string name="card_source_nfc">NFC</string>
+</resources>
