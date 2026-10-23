@@ -30,3 +30,5 @@ include(":core:nfc")
 include(":core:ui")
 
 include(":feature:terminal")
+include(":feature:card")
+include(":feature:tlv")
