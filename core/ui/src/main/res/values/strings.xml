@@ -1,0 +1,14 @@
+<resources>
+    <string name="ui_category_payments">Payments</string>
+    <string name="ui_category_cryptograms">Cryptograms and tokens</string>
+    <string name="ui_category_key_management">PIN and keys</string>
+    <string name="ui_category_tags">Tags</string>
+    <string name="ui_category_attacks">Attacks</string>
+    <string name="ui_category_payments_description">A contactless card and a payment terminal talking EMV over APDUs</string>
+    <string name="ui_category_cryptograms_description">How the issuer knows a tap is genuine: ARQC, ARPC and tokenized cards</string>
+    <string name="ui_category_key_management_description">PIN blocks and the key hierarchy behind every payment terminal</string>
+    <string name="ui_category_tags_description">NDEF messages on NFC tags</string>
+    <string name="ui_category_attacks_description">Relay and replay attacks on contactless payments and the defences against them</string>
+    <string name="ui_requirement_android">Android %1$s+</string>
+    <string name="ui_requirement_needs_android">Needs Android %1$s</string>
+</resources>

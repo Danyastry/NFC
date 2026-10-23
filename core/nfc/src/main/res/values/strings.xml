@@ -1,0 +1,7 @@
+<resources>
+    <string name="nfc_status_no_nfc">This device has no NFC. Card and terminal talk over a simulated link inside the app.</string>
+    <string name="nfc_status_off">NFC is off. Turn it on to tap real cards, or keep using the simulated link.</string>
+    <string name="nfc_status_ready">NFC is on. This phone can read cards and act as one.</string>
+    <string name="nfc_status_ready_without_hce">NFC is on. This phone can read cards but cannot emulate one.</string>
+    <string name="nfc_status_open_settings">Open settings</string>
+</resources>
