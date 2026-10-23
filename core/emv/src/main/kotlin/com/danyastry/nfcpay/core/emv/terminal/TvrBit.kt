@@ -1,0 +1,28 @@
+package com.danyastry.nfcpay.core.emv.terminal
+
+enum class TvrBit(val byteIndex: Int, val mask: Int, val description: String) {
+    OFFLINE_DATA_AUTHENTICATION_NOT_PERFORMED(0, 0x80, "Offline data authentication was not performed"),
+    SDA_FAILED(0, 0x40, "SDA failed"),
+    ICC_DATA_MISSING(0, 0x20, "ICC data missing"),
+    CARD_ON_EXCEPTION_FILE(0, 0x10, "Card appears on terminal exception file"),
+    DDA_FAILED(0, 0x08, "DDA failed"),
+    CDA_FAILED(0, 0x04, "CDA failed"),
+    VERSION_MISMATCH(1, 0x80, "ICC and terminal have different application versions"),
+    EXPIRED_APPLICATION(1, 0x40, "Expired application"),
+    APPLICATION_NOT_EFFECTIVE(1, 0x20, "Application not yet effective"),
+    SERVICE_NOT_ALLOWED(1, 0x10, "Requested service not allowed for card product"),
+    NEW_CARD(1, 0x08, "New card"),
+    CARDHOLDER_VERIFICATION_FAILED(2, 0x80, "Cardholder verification was not successful"),
+    UNRECOGNISED_CVM(2, 0x40, "Unrecognised CVM"),
+    PIN_TRY_LIMIT_EXCEEDED(2, 0x20, "PIN try limit exceeded"),
+    ONLINE_PIN_ENTERED(2, 0x04, "Online PIN entered"),
+    FLOOR_LIMIT_EXCEEDED(3, 0x80, "Transaction exceeds floor limit"),
+    LOWER_OFFLINE_LIMIT_EXCEEDED(3, 0x40, "Lower consecutive offline limit exceeded"),
+    UPPER_OFFLINE_LIMIT_EXCEEDED(3, 0x20, "Upper consecutive offline limit exceeded"),
+    RANDOMLY_SELECTED_ONLINE(3, 0x10, "Transaction selected randomly for online processing"),
+    MERCHANT_FORCED_ONLINE(3, 0x08, "Merchant forced transaction online"),
+    DEFAULT_TDOL_USED(4, 0x80, "Default TDOL used"),
+    ISSUER_AUTHENTICATION_FAILED(4, 0x40, "Issuer authentication failed"),
+    SCRIPT_FAILED_BEFORE_AC(4, 0x20, "Script processing failed before final GENERATE AC"),
+    SCRIPT_FAILED_AFTER_AC(4, 0x10, "Script processing failed after final GENERATE AC"),
+}
