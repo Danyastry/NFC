@@ -9,6 +9,7 @@ class AndroidFeatureConventionPlugin : Plugin<Project> {
         pluginManager.apply("nfcpay.android.library.compose")
 
         dependencies {
+            add("implementation", project(":core:emv"))
             add("implementation", project(":core:nfc"))
             add("implementation", project(":core:ui"))
             add("implementation", libs.library("androidx-material3"))
