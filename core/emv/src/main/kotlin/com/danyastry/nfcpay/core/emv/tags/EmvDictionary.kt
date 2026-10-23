@@ -1,0 +1,107 @@
+package com.danyastry.nfcpay.core.emv.tags
+
+import com.danyastry.nfcpay.core.emv.tlv.Tag
+import com.danyastry.nfcpay.core.emv.tags.TagFormat.BINARY
+import com.danyastry.nfcpay.core.emv.tags.TagFormat.COMPRESSED_NUMERIC
+import com.danyastry.nfcpay.core.emv.tags.TagFormat.NUMERIC
+import com.danyastry.nfcpay.core.emv.tags.TagFormat.TEMPLATE
+import com.danyastry.nfcpay.core.emv.tags.TagFormat.TEXT
+
+object EmvDictionary {
+
+    private val entries: Map<Int, TagInfo> = mapOf(
+        0x42 to TagInfo("Issuer Identification Number", NUMERIC),
+        0x4F to TagInfo("Application Identifier (AID)", BINARY),
+        0x50 to TagInfo("Application Label", TEXT),
+        0x56 to TagInfo("Track 1 Data", BINARY, isSensitive = true),
+        0x57 to TagInfo("Track 2 Equivalent Data", BINARY, isSensitive = true),
+        0x5A to TagInfo("Application PAN", COMPRESSED_NUMERIC, isSensitive = true),
+        0x61 to TagInfo("Application Template", TEMPLATE),
+        0x6F to TagInfo("File Control Information Template", TEMPLATE),
+        0x70 to TagInfo("Record Template", TEMPLATE),
+        0x77 to TagInfo("Response Message Template Format 2", TEMPLATE),
+        0x80 to TagInfo("Response Message Template Format 1", BINARY),
+        0x82 to TagInfo("Application Interchange Profile", BINARY),
+        0x83 to TagInfo("Command Template", BINARY),
+        0x84 to TagInfo("Dedicated File Name", BINARY),
+        0x87 to TagInfo("Application Priority Indicator", BINARY),
+        0x88 to TagInfo("Short File Identifier", BINARY),
+        0x8C to TagInfo("CDOL1", BINARY),
+        0x8D to TagInfo("CDOL2", BINARY),
+        0x8E to TagInfo("CVM List", BINARY),
+        0x8F to TagInfo("Certification Authority Public Key Index", BINARY),
+        0x90 to TagInfo("Issuer Public Key Certificate", BINARY),
+        0x92 to TagInfo("Issuer Public Key Remainder", BINARY),
+        0x93 to TagInfo("Signed Static Application Data", BINARY),
+        0x94 to TagInfo("Application File Locator", BINARY),
+        0x95 to TagInfo("Terminal Verification Results", BINARY),
+        0x9A to TagInfo("Transaction Date", NUMERIC),
+        0x9C to TagInfo("Transaction Type", NUMERIC),
+        0xA5 to TagInfo("FCI Proprietary Template", TEMPLATE),
+        0x5F20 to TagInfo("Cardholder Name", TEXT, isSensitive = true),
+        0x5F24 to TagInfo("Application Expiration Date", NUMERIC),
+        0x5F25 to TagInfo("Application Effective Date", NUMERIC),
+        0x5F28 to TagInfo("Issuer Country Code", NUMERIC),
+        0x5F2A to TagInfo("Transaction Currency Code", NUMERIC),
+        0x5F2D to TagInfo("Language Preference", TEXT),
+        0x5F30 to TagInfo("Service Code", NUMERIC),
+        0x5F34 to TagInfo("PAN Sequence Number", NUMERIC),
+        0x9F02 to TagInfo("Amount, Authorised", NUMERIC),
+        0x9F03 to TagInfo("Amount, Other", NUMERIC),
+        0x9F06 to TagInfo("Application Identifier (Terminal)", BINARY),
+        0x9F07 to TagInfo("Application Usage Control", BINARY),
+        0x9F08 to TagInfo("Application Version Number (Card)", BINARY),
+        0x9F09 to TagInfo("Application Version Number (Terminal)", BINARY),
+        0x9F0D to TagInfo("Issuer Action Code - Default", BINARY),
+        0x9F0E to TagInfo("Issuer Action Code - Denial", BINARY),
+        0x9F0F to TagInfo("Issuer Action Code - Online", BINARY),
+        0x9F10 to TagInfo("Issuer Application Data", BINARY),
+        0x9F11 to TagInfo("Issuer Code Table Index", NUMERIC),
+        0x9F12 to TagInfo("Application Preferred Name", TEXT),
+        0x9F17 to TagInfo("PIN Try Counter", BINARY),
+        0x9F19 to TagInfo("Token Requestor ID", NUMERIC),
+        0x9F1A to TagInfo("Terminal Country Code", NUMERIC),
+        0x9F1E to TagInfo("Interface Device Serial Number", TEXT),
+        0x9F1F to TagInfo("Track 1 Discretionary Data", TEXT, isSensitive = true),
+        0x9F21 to TagInfo("Transaction Time", NUMERIC),
+        0x9F24 to TagInfo("Payment Account Reference", TEXT),
+        0x9F25 to TagInfo("Last 4 Digits of PAN", NUMERIC),
+        0x9F26 to TagInfo("Application Cryptogram", BINARY),
+        0x9F27 to TagInfo("Cryptogram Information Data", BINARY),
+        0x9F32 to TagInfo("Issuer Public Key Exponent", BINARY),
+        0x9F33 to TagInfo("Terminal Capabilities", BINARY),
+        0x9F34 to TagInfo("CVM Results", BINARY),
+        0x9F35 to TagInfo("Terminal Type", NUMERIC),
+        0x9F36 to TagInfo("Application Transaction Counter", BINARY),
+        0x9F37 to TagInfo("Unpredictable Number", BINARY),
+        0x9F38 to TagInfo("PDOL", BINARY),
+        0x9F39 to TagInfo("POS Entry Mode", NUMERIC),
+        0x9F40 to TagInfo("Additional Terminal Capabilities", BINARY),
+        0x9F41 to TagInfo("Transaction Sequence Counter", NUMERIC),
+        0x9F42 to TagInfo("Application Currency Code", NUMERIC),
+        0x9F46 to TagInfo("ICC Public Key Certificate", BINARY),
+        0x9F47 to TagInfo("ICC Public Key Exponent", BINARY),
+        0x9F48 to TagInfo("ICC Public Key Remainder", BINARY),
+        0x9F49 to TagInfo("DDOL", BINARY),
+        0x9F4A to TagInfo("Static Data Authentication Tag List", BINARY),
+        0x9F4B to TagInfo("Signed Dynamic Application Data", BINARY),
+        0x9F4C to TagInfo("ICC Dynamic Number", BINARY),
+        0x9F4D to TagInfo("Log Entry", BINARY),
+        0x9F4E to TagInfo("Merchant Name and Location", TEXT),
+        0x9F53 to TagInfo("Transaction Category Code", TEXT),
+        0x9F5D to TagInfo("Available Offline Spending Amount", NUMERIC),
+        0x9F66 to TagInfo("Terminal Transaction Qualifiers", BINARY),
+        0x9F69 to TagInfo("Card Authentication Related Data", BINARY),
+        0x9F6B to TagInfo("Track 2 Data", BINARY, isSensitive = true),
+        0x9F6C to TagInfo("Card Transaction Qualifiers", BINARY),
+        0x9F6E to TagInfo("Form Factor Indicator", BINARY),
+        0x9F7C to TagInfo("Customer Exclusive Data", BINARY),
+        0xBF0C to TagInfo("FCI Issuer Discretionary Data", TEMPLATE),
+    )
+
+    fun info(tag: Tag): TagInfo? = entries[tag.value]
+
+    fun nameOf(tag: Tag): String = info(tag)?.name ?: "Unknown tag"
+
+    fun isSensitive(tag: Tag): Boolean = info(tag)?.isSensitive == true
+}

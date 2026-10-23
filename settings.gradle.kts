@@ -25,5 +25,6 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 rootProject.name = "nfcpay"
 
 include(":app")
+include(":core:emv")
 include(":core:nfc")
 include(":core:ui")
