@@ -6,6 +6,7 @@ import com.danyastry.nfcpay.core.emv.apdu.EmvCommands
 import com.danyastry.nfcpay.core.emv.apdu.Instruction
 import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu
 import com.danyastry.nfcpay.core.emv.apdu.StatusWord
+import com.danyastry.nfcpay.core.emv.crypto.Arpc
 import com.danyastry.nfcpay.core.emv.dol.Dol
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
@@ -16,6 +17,10 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
 
     private val files = CardFiles(profile)
     private var session = CardSession.IDLE
+    private var firstAc: FirstAc? = null
+
+    var lastIssuerAuthentication: IssuerAuthentication = IssuerAuthentication.NOT_PERFORMED
+        private set
 
     var atc: Int = initialAtc
         private set
@@ -26,12 +31,14 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
     @Synchronized
     fun deactivate() {
         session = CardSession.IDLE
+        firstAc = null
     }
 
     @Synchronized
     fun resetCounter() {
         atc = 0
         session = CardSession.IDLE
+        firstAc = null
     }
 
     private fun respond(bytes: ByteArray): ResponseApdu {
@@ -95,25 +102,70 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
         return ResponseApdu.success(record)
     }
 
-    private fun generateAc(command: CommandApdu): ResponseApdu {
-        if (session != CardSession.PROCESSING) return ResponseApdu.status(StatusWord.CONDITIONS_NOT_SATISFIED)
+    private fun generateAc(command: CommandApdu): ResponseApdu = when (session) {
+        CardSession.PROCESSING -> firstGenerateAc(command)
+        CardSession.AWAITING_ISSUER -> secondGenerateAc(command)
+        else -> ResponseApdu.status(StatusWord.CONDITIONS_NOT_SATISFIED)
+    }
+
+    private fun firstGenerateAc(command: CommandApdu): ResponseApdu {
         val requested = CryptogramType.fromBits(command.p1) ?: return ResponseApdu.status(StatusWord.INCORRECT_P1_P2)
         if (command.data.size != Dol.totalLength(files.cdol1)) return ResponseApdu.status(StatusWord.WRONG_LENGTH)
         val type = if (requested == CryptogramType.AAC) CryptogramType.AAC else CryptogramType.ARQC
-        val atcBytes = atc.toBytes(2)
         val key = CardCryptogram.key(profile.masterKey, profile.cryptogramVersion, atc)
-        val cryptogram = CardCryptogram.compute(key, command.data, files.aip, atc, CardCryptogram.cvr(type))
+        val cvr = CardCryptogram.cvr(type)
+        val cryptogram = CardCryptogram.compute(key, command.data, files.aip, atc, cvr)
+        if (type == CryptogramType.ARQC) {
+            firstAc = FirstAc(key, command.data, cryptogram)
+            session = CardSession.AWAITING_ISSUER
+        } else {
+            session = CardSession.COMPLETED
+        }
+        return cryptogramResponse(type, cryptogram, CardCryptogram.issuerApplicationData(type, profile.cryptogramVersion))
+    }
+
+    private fun secondGenerateAc(command: CommandApdu): ResponseApdu {
+        val first = firstAc ?: return ResponseApdu.status(StatusWord.CONDITIONS_NOT_SATISFIED)
+        val requested = CryptogramType.fromBits(command.p1)
+        if (requested == null || requested == CryptogramType.ARQC) return ResponseApdu.status(StatusWord.INCORRECT_P1_P2)
+        if (command.data.size != Dol.totalLength(files.cdol2)) return ResponseApdu.status(StatusWord.WRONG_LENGTH)
+        val values = Dol.split(files.cdol2, command.data)
+        val responseCode = values.getValue(EmvTags.AUTHORISATION_RESPONSE_CODE)
+        val authentication = authenticateIssuer(first, values.getValue(EmvTags.ISSUER_AUTHENTICATION_DATA), responseCode)
+        val approve = requested == CryptogramType.TC &&
+            authentication == IssuerAuthentication.PASSED &&
+            responseCode.contentEquals(APPROVED_CODE)
+        val type = if (approve) CryptogramType.TC else CryptogramType.AAC
+        val cvr = CardCryptogram.secondCvr(type, authentication)
+        val cryptogram = CardCryptogram.compute(first.key, first.cdolData + command.data, files.aip, atc, cvr)
+        lastIssuerAuthentication = authentication
+        firstAc = null
         session = CardSession.COMPLETED
-        return ResponseApdu.success(
+        return cryptogramResponse(type, cryptogram, CardCryptogram.issuerApplicationData(profile.cryptogramVersion, cvr))
+    }
+
+    private fun authenticateIssuer(first: FirstAc, issuerData: ByteArray, responseCode: ByteArray): IssuerAuthentication {
+        if (issuerData.all { it == 0.toByte() }) return IssuerAuthentication.NOT_PERFORMED
+        val arpc = issuerData.copyOfRange(0, 8)
+        val signedCode = issuerData.copyOfRange(8, 10)
+        val expected = Arpc.method1(first.key, first.cryptogram, signedCode)
+        return if (expected.contentEquals(arpc) && signedCode.contentEquals(responseCode)) {
+            IssuerAuthentication.PASSED
+        } else {
+            IssuerAuthentication.FAILED
+        }
+    }
+
+    private fun cryptogramResponse(type: CryptogramType, cryptogram: ByteArray, iad: ByteArray): ResponseApdu =
+        ResponseApdu.success(
             Tlv.constructed(
                 EmvTags.RESPONSE_FORMAT_2,
                 Tlv.primitive(EmvTags.CRYPTOGRAM_INFORMATION_DATA, byteArrayOf(type.bits.toByte())),
-                Tlv.primitive(EmvTags.ATC, atcBytes),
+                Tlv.primitive(EmvTags.ATC, atc.toBytes(2)),
                 Tlv.primitive(EmvTags.APPLICATION_CRYPTOGRAM, cryptogram),
-                Tlv.primitive(EmvTags.ISSUER_APPLICATION_DATA, CardCryptogram.issuerApplicationData(type, profile.cryptogramVersion)),
+                Tlv.primitive(EmvTags.ISSUER_APPLICATION_DATA, iad),
             ).encode(),
         )
-    }
 
     private fun getData(command: CommandApdu): ResponseApdu {
         val tag = (command.p1 shl 8) or command.p2
@@ -123,5 +175,6 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
 
     companion object {
         const val MAX_ATC = 0xFFFF
+        private val APPROVED_CODE = "00".toByteArray(Charsets.US_ASCII)
     }
 }

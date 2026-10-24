@@ -4,6 +4,7 @@ import com.danyastry.nfcpay.core.emv.apdu.CommandApdu
 import com.danyastry.nfcpay.core.emv.apdu.EmvCommands
 import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu
 import com.danyastry.nfcpay.core.emv.apdu.StatusWord
+import com.danyastry.nfcpay.core.emv.crypto.Arpc
 import com.danyastry.nfcpay.core.emv.crypto.RetailMac
 import com.danyastry.nfcpay.core.emv.crypto.SessionKeyDerivation
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
@@ -64,7 +65,7 @@ class VirtualCardTest {
         val response = send(EmvCommands.getProcessingOptions(pdolData))
 
         val tlvs = BerTlv.parse(response.data)
-        assertThat(tlvs.valueOf(EmvTags.AIP)!!.toHex()).isEqualTo("1880")
+        assertThat(tlvs.valueOf(EmvTags.AIP)!!.toHex()).isEqualTo("1C80")
         assertThat(tlvs.valueOf(EmvTags.AFL)!!.toHex()).isEqualTo("08010200")
         assertThat(card.atc).isEqualTo(1)
     }
@@ -93,7 +94,7 @@ class VirtualCardTest {
         assertThat(tlvs.valueOf(EmvTags.ATC)!!.toHex()).isEqualTo("0001")
         assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06011203A00000")
         val sessionKey = SessionKeyDerivation.commonSessionKey(DemoCards.lab.masterKey, atc = 1)
-        val expected = RetailMac.compute(sessionKey, (cdolData + "1880" + "0001" + "03A00000").hexToBytes())
+        val expected = RetailMac.compute(sessionKey, (cdolData + "1C80" + "0001" + "03A00000").hexToBytes())
         assertThat(tlvs.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
     }
 
@@ -110,12 +111,97 @@ class VirtualCardTest {
     }
 
     @Test
-    fun `generates one cryptogram per transaction`() {
-        startTransaction()
-        send(EmvCommands.generateAc(CryptogramType.ARQC, cdolData.hexToBytes()))
+    fun `asks for the issuer answer through CDOL2`() {
+        val record = BerTlv.parse(send(EmvCommands.readRecord(1, 2)).data)
 
-        assertThat(send(EmvCommands.generateAc(CryptogramType.ARQC, cdolData.hexToBytes())).sw).isEqualTo(StatusWord.CONDITIONS_NOT_SATISFIED)
+        assertThat(record.valueOf(EmvTags.CDOL2)!!.toHex()).isEqualTo("8A0291 0A95059F3704".replace(" ", ""))
     }
+
+    @Test
+    fun `completes with a TC when the issuer approves and proves it`() {
+        val arqc = firstArqc()
+
+        val response = secondAc(CryptogramType.TC, "3030", issuerData(arqc, "3030"))
+
+        assertThat(response.valueOf(EmvTags.CRYPTOGRAM_INFORMATION_DATA)!!.toHex()).isEqualTo("40")
+        assertThat(response.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06011203604000")
+        assertThat(card.lastIssuerAuthentication).isEqualTo(IssuerAuthentication.PASSED)
+        val cdol2Data = "3030" + issuerData(arqc, "3030") + "8000008000" + "CAFEBABE"
+        val expected = RetailMac.compute(sessionKey(), (cdolData + cdol2Data + "1C80" + "0001" + "03604000").hexToBytes())
+        assertThat(response.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
+    }
+
+    @Test
+    fun `declines when the ARPC is forged`() {
+        firstArqc()
+
+        val response = secondAc(CryptogramType.TC, "3030", "0102030405060708" + "3030")
+
+        assertThat(response.valueOf(EmvTags.CRYPTOGRAM_INFORMATION_DATA)!!.toHex()).isEqualTo("00")
+        assertThat(card.lastIssuerAuthentication).isEqualTo(IssuerAuthentication.FAILED)
+    }
+
+    @Test
+    fun `declines when the response code was changed after signing`() {
+        val arqc = firstArqc()
+
+        val response = secondAc(CryptogramType.TC, "3030", issuerData(arqc, "3531"))
+
+        assertThat(response.valueOf(EmvTags.CRYPTOGRAM_INFORMATION_DATA)!!.toHex()).isEqualTo("00")
+        assertThat(card.lastIssuerAuthentication).isEqualTo(IssuerAuthentication.FAILED)
+    }
+
+    @Test
+    fun `follows a genuine issuer decline`() {
+        val arqc = firstArqc()
+
+        val response = secondAc(CryptogramType.AAC, "3531", issuerData(arqc, "3531"))
+
+        assertThat(response.valueOf(EmvTags.CRYPTOGRAM_INFORMATION_DATA)!!.toHex()).isEqualTo("00")
+        assertThat(card.lastIssuerAuthentication).isEqualTo(IssuerAuthentication.PASSED)
+    }
+
+    @Test
+    fun `declines when the terminal could not go online`() {
+        firstArqc()
+
+        val response = secondAc(CryptogramType.AAC, "5A33", "00".repeat(10))
+
+        assertThat(response.valueOf(EmvTags.CRYPTOGRAM_INFORMATION_DATA)!!.toHex()).isEqualTo("00")
+        assertThat(card.lastIssuerAuthentication).isEqualTo(IssuerAuthentication.NOT_PERFORMED)
+    }
+
+    @Test
+    fun `allows exactly two cryptograms per transaction`() {
+        val arqc = firstArqc()
+
+        assertThat(send(EmvCommands.generateAc(CryptogramType.ARQC, ByteArray(21))).sw).isEqualTo(StatusWord.INCORRECT_P1_P2)
+        assertThat(send(EmvCommands.generateAc(CryptogramType.TC, ByteArray(3))).sw).isEqualTo(StatusWord.WRONG_LENGTH)
+        secondAc(CryptogramType.TC, "3030", issuerData(arqc, "3030"))
+        assertThat(send(EmvCommands.generateAc(CryptogramType.TC, ByteArray(21))).sw).isEqualTo(StatusWord.CONDITIONS_NOT_SATISFIED)
+    }
+
+    @Test
+    fun `an AAC ends the transaction at once`() {
+        startTransaction()
+        send(EmvCommands.generateAc(CryptogramType.AAC, cdolData.hexToBytes()))
+
+        assertThat(send(EmvCommands.generateAc(CryptogramType.TC, ByteArray(21))).sw).isEqualTo(StatusWord.CONDITIONS_NOT_SATISFIED)
+    }
+
+    private fun firstArqc(): ByteArray {
+        startTransaction()
+        val response = BerTlv.parse(send(EmvCommands.generateAc(CryptogramType.ARQC, cdolData.hexToBytes())).data)
+        return response.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)!!
+    }
+
+    private fun secondAc(type: CryptogramType, responseCode: String, issuerData: String) =
+        BerTlv.parse(send(EmvCommands.generateAc(type, (responseCode + issuerData + "8000008000" + "CAFEBABE").hexToBytes())).data)
+
+    private fun issuerData(arqc: ByteArray, responseCode: String): String =
+        Arpc.method1(sessionKey(), arqc, responseCode.hexToBytes()).toHex() + responseCode
+
+    private fun sessionKey() = SessionKeyDerivation.commonSessionKey(DemoCards.lab.masterKey, atc = 1)
 
     @Test
     fun `checks the CDOL1 data length`() {
@@ -154,7 +240,7 @@ class VirtualCardTest {
         val tlvs = BerTlv.parse(ResponseApdu.parse(legacy.process(EmvCommands.generateAc(CryptogramType.ARQC, cdolData.hexToBytes()).encode())).data)
 
         assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06010A03A00000")
-        val expected = RetailMac.compute(DemoCards.lab.masterKey, (cdolData + "1880" + "0001" + "03A00000").hexToBytes())
+        val expected = RetailMac.compute(DemoCards.lab.masterKey, (cdolData + "1C80" + "0001" + "03A00000").hexToBytes())
         assertThat(tlvs.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
     }
 

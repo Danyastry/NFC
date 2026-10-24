@@ -23,6 +23,8 @@ class CardFiles(private val profile: CardProfile) {
 
     val cdol1: List<DolEntry> = CDOL1
 
+    val cdol2: List<DolEntry> = CDOL2
+
     fun ppse(): ByteArray = Tlv.constructed(
         EmvTags.FCI_TEMPLATE,
         Tlv.primitive(EmvTags.DF_NAME, EmvCommands.PPSE),
@@ -68,6 +70,7 @@ class CardFiles(private val profile: CardProfile) {
             Tlv.primitive(EmvTags.PAN_SEQUENCE_NUMBER, Bcd.encode(profile.panSequenceNumber.toLong(), 1)),
             Tlv.primitive(EmvTags.APPLICATION_CURRENCY, Bcd.encode(profile.currencyCode.toLong(), 2)),
             Tlv.primitive(EmvTags.CDOL1, Dol.encode(cdol1)),
+            Tlv.primitive(EmvTags.CDOL2, Dol.encode(cdol2)),
             Tlv.primitive(EmvTags.CVM_LIST, CVM_LIST),
         ).encode()
         else -> null
@@ -98,7 +101,7 @@ class CardFiles(private val profile: CardProfile) {
         const val SERVICE_CODE = "201"
         const val TRACK_2_DISCRETIONARY = "00000000000"
 
-        val AIP: ByteArray = "1880".hexToBytes()
+        val AIP: ByteArray = "1C80".hexToBytes()
 
         val CDOL1: List<DolEntry> = listOf(
             DolEntry(EmvTags.AMOUNT_AUTHORISED, 6),
@@ -108,6 +111,13 @@ class CardFiles(private val profile: CardProfile) {
             DolEntry(EmvTags.TRANSACTION_CURRENCY, 2),
             DolEntry(EmvTags.TRANSACTION_DATE, 3),
             DolEntry(EmvTags.TRANSACTION_TYPE, 1),
+            DolEntry(EmvTags.UNPREDICTABLE_NUMBER, 4),
+        )
+
+        val CDOL2: List<DolEntry> = listOf(
+            DolEntry(EmvTags.AUTHORISATION_RESPONSE_CODE, 2),
+            DolEntry(EmvTags.ISSUER_AUTHENTICATION_DATA, 10),
+            DolEntry(EmvTags.TVR, 5),
             DolEntry(EmvTags.UNPREDICTABLE_NUMBER, 4),
         )
 

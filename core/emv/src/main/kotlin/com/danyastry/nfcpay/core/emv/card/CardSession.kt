@@ -4,5 +4,6 @@ enum class CardSession {
     IDLE,
     SELECTED,
     PROCESSING,
+    AWAITING_ISSUER,
     COMPLETED,
 }

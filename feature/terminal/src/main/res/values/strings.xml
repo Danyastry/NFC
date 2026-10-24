@@ -10,8 +10,15 @@
     <string name="terminal_reading">Reading the card…</string>
     <string name="terminal_cancel">Cancel</string>
     <string name="terminal_nfc_needed">Reading real cards needs NFC. The virtual card works on any device.</string>
-    <string name="terminal_no_charge">Nothing is charged: the cryptogram stays on this phone and no authorization is sent.</string>
-    <string name="terminal_decision_arqc">ARQC: the card asks to go online to the issuer</string>
+    <string name="terminal_no_charge">Nothing is charged. The virtual card goes online to a demo issuer inside the app; a real card stops at the ARQC and nothing leaves this phone.</string>
+    <string name="terminal_approved">Approved</string>
+    <string name="terminal_declined">Declined</string>
+    <string name="terminal_issuer_answer">Issuer: %1$s · %2$s</string>
+    <string name="terminal_final_cryptogram">Final cryptogram: %1$s %2$s</string>
+    <string name="terminal_card_overruled">The issuer said yes, but the card could not verify the ARPC and declined</string>
+    <string name="terminal_unable_online">Unable to go online</string>
+    <string name="terminal_unknown_code">Unknown response code</string>
+    <string name="terminal_decision_arqc">First cryptogram: ARQC, the card asks to go online</string>
     <string name="terminal_decision_tc">TC: the card approved offline</string>
     <string name="terminal_decision_aac">AAC: the card declined</string>
     <string name="terminal_card">Card: %1$s</string>

@@ -27,6 +27,7 @@ import kotlin.random.Random
 class TerminalKernel(
     private val config: TerminalConfig = TerminalConfig(),
     private val random: Random = Random.Default,
+    private val authorizer: OnlineAuthorizer? = null,
 ) {
 
     suspend fun run(transport: CardTransport, request: TransactionRequest): TransactionResult {
@@ -87,13 +88,42 @@ class TerminalKernel(
             listOf(EmvTags.APPLICATION_CRYPTOGRAM, EmvTags.CRYPTOGRAM_INFORMATION_DATA, EmvTags.ISSUER_APPLICATION_DATA, EmvTags.ATC)
                 .forEach { tag -> cryptogramData.valueOf(tag)?.let { put(tag, it) } }
         }
+        val field55 = Field55.build(field55Values)
+        val online = authorizer?.takeIf { cryptogram.type == CryptogramType.ARQC }?.let {
+            goOnline(session, it, OnlineRequest(card, field55, request.date), cardData, terminalData)
+        }
         return TransactionOutcome.Completed(
             card = card,
             cryptogram = cryptogram,
             tvr = tvr,
             cardholderVerificationRequired = request.amount > config.cvmLimit,
-            field55 = Field55.build(field55Values).toHex(),
+            field55 = field55.toHex(),
+            online = online,
         )
+    }
+
+    private suspend fun goOnline(
+        session: Session,
+        authorizer: OnlineAuthorizer,
+        request: OnlineRequest,
+        cardData: List<Tlv>,
+        terminalData: MutableMap<Tag, ByteArray>,
+    ): OnlineResult {
+        val response = try {
+            authorizer.authorize(request)
+        } catch (_: IOException) {
+            null
+        }
+        val responseCode = response?.responseCode ?: OnlineResponse.UNABLE_TO_GO_ONLINE
+        val cdol2 = cardData.valueOf(EmvTags.CDOL2)?.let(Dol::parse)
+            ?: return OnlineResult(responseCode, reachedIssuer = response != null, finalCryptogram = null)
+        terminalData[EmvTags.AUTHORISATION_RESPONSE_CODE] = responseCode.toByteArray(Charsets.US_ASCII)
+        response?.issuerAuthenticationData?.let { terminalData[EmvTags.ISSUER_AUTHENTICATION_DATA] = it }
+        val requested = if (response?.isApproved == true) CryptogramType.TC else CryptogramType.AAC
+        val reply = session.exchange("GENERATE AC · ${requested.label}", EmvCommands.generateAc(requested, Dol.build(cdol2, terminalData::get)))
+        if (!reply.isSuccess) throw KernelException(TerminalError.GENERATE_AC_FAILED, reply.sw)
+        val final = cryptogram(parseGenerateAc(reply.data), fromProcessingOptions = false)
+        return OnlineResult(responseCode, reachedIssuer = response != null, finalCryptogram = final)
     }
 
     private suspend fun selectApplication(session: Session): Pair<ApplicationCandidate, List<Tlv>> {
