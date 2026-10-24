@@ -30,6 +30,12 @@ class IssuerHost(
     fun account(pan: String, panSequenceNumber: Int): IssuerAccount? = accounts[key(pan, panSequenceNumber)]
 
     @Synchronized
+    fun reset(accounts: List<IssuerAccount>) {
+        this.accounts.clear()
+        accounts.forEach { this.accounts[key(it.pan, it.panSequenceNumber)] = it }
+    }
+
+    @Synchronized
     fun authorize(request: AuthorizationRequest): AuthorizationResponse = Session(request).run()
 
     private inner class Session(private val request: AuthorizationRequest) {

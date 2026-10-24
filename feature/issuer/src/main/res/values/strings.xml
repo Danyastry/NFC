@@ -1,0 +1,18 @@
+<resources>
+    <string name="issuer_account">Account of the virtual card</string>
+    <string name="issuer_balance">Balance: %1$s USD</string>
+    <string name="issuer_last_atc">Last transaction counter seen: %1$s</string>
+    <string name="issuer_keys">Key hierarchy</string>
+    <string name="issuer_master_key">Issuer master key · KCV %1$s</string>
+    <string name="issuer_card_key">Card key · KCV %1$s · %2$s</string>
+    <string name="issuer_session_key">Session key · a new one for every transaction counter</string>
+    <string name="issuer_keys_hint">Only check values are shown. The issuer keeps the master key; each card holds only its own derived key.</string>
+    <string name="issuer_replay">Replay last tap</string>
+    <string name="issuer_reset">Reset bank</string>
+    <string name="issuer_log_title">Authorizations: %1$d</string>
+    <string name="issuer_log_empty">No authorizations yet. Tap the virtual card on the payment terminal screen.</string>
+    <string name="issuer_response">%1$s · %2$s</string>
+    <string name="issuer_replayed">Replay</string>
+    <string name="issuer_amount">%1$s USD</string>
+    <string name="issuer_atc">ATC %1$d</string>
+</resources>
