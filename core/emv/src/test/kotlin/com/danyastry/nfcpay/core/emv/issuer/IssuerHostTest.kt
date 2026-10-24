@@ -130,6 +130,17 @@ class IssuerHostTest {
     }
 
     @Test
+    fun `reset brings back the opening balance and forgets counters`() = runTest {
+        val field55 = tap(amount = 100)
+        issuer.authorize(request(field55))
+
+        issuer.reset(listOf(DemoIssuer.account()))
+
+        assertThat(issuer.account(DemoCards.lab.pan, 1)).isEqualTo(DemoIssuer.account())
+        assertThat(issuer.authorize(request(field55)).isApproved).isTrue()
+    }
+
+    @Test
     fun `refuses an unknown cryptogram version`() = runTest {
         val field55 = replace(tap(amount = 100), EmvTags.ISSUER_APPLICATION_DATA, "06017703A00000".hexToBytes())
 
