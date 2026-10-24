@@ -21,16 +21,7 @@ class CardFiles(private val profile: CardProfile) {
         DolEntry(EmvTags.TRANSACTION_CURRENCY, 2),
     )
 
-    val cdol1: List<DolEntry> = listOf(
-        DolEntry(EmvTags.AMOUNT_AUTHORISED, 6),
-        DolEntry(EmvTags.AMOUNT_OTHER, 6),
-        DolEntry(EmvTags.TERMINAL_COUNTRY, 2),
-        DolEntry(EmvTags.TVR, 5),
-        DolEntry(EmvTags.TRANSACTION_CURRENCY, 2),
-        DolEntry(EmvTags.TRANSACTION_DATE, 3),
-        DolEntry(EmvTags.TRANSACTION_TYPE, 1),
-        DolEntry(EmvTags.UNPREDICTABLE_NUMBER, 4),
-    )
+    val cdol1: List<DolEntry> = CDOL1
 
     fun ppse(): ByteArray = Tlv.constructed(
         EmvTags.FCI_TEMPLATE,
@@ -108,6 +99,17 @@ class CardFiles(private val profile: CardProfile) {
         const val TRACK_2_DISCRETIONARY = "00000000000"
 
         val AIP: ByteArray = "1880".hexToBytes()
+
+        val CDOL1: List<DolEntry> = listOf(
+            DolEntry(EmvTags.AMOUNT_AUTHORISED, 6),
+            DolEntry(EmvTags.AMOUNT_OTHER, 6),
+            DolEntry(EmvTags.TERMINAL_COUNTRY, 2),
+            DolEntry(EmvTags.TVR, 5),
+            DolEntry(EmvTags.TRANSACTION_CURRENCY, 2),
+            DolEntry(EmvTags.TRANSACTION_DATE, 3),
+            DolEntry(EmvTags.TRANSACTION_TYPE, 1),
+            DolEntry(EmvTags.UNPREDICTABLE_NUMBER, 4),
+        )
 
         val CVM_LIST: ByteArray = "00000000000000004203".hexToBytes() + "1F03".hexToBytes()
     }

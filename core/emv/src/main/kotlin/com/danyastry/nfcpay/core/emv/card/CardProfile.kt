@@ -14,6 +14,7 @@ class CardProfile(
     val issuerCountryCode: Int,
     val currencyCode: Int,
     val masterKey: ByteArray,
+    val cryptogramVersion: CryptogramVersion = CryptogramVersion.SESSION_KEY,
 ) {
     init {
         require(Luhn.isValid(pan)) { "PAN fails the Luhn check" }
