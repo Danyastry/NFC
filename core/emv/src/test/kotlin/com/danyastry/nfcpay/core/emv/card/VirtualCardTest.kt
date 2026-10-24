@@ -5,6 +5,7 @@ import com.danyastry.nfcpay.core.emv.apdu.EmvCommands
 import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu
 import com.danyastry.nfcpay.core.emv.apdu.StatusWord
 import com.danyastry.nfcpay.core.emv.crypto.RetailMac
+import com.danyastry.nfcpay.core.emv.crypto.SessionKeyDerivation
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.tlv.valueOf
@@ -90,8 +91,9 @@ class VirtualCardTest {
         val tlvs = BerTlv.parse(response.data)
         assertThat(tlvs.valueOf(EmvTags.CRYPTOGRAM_INFORMATION_DATA)!!.toHex()).isEqualTo("80")
         assertThat(tlvs.valueOf(EmvTags.ATC)!!.toHex()).isEqualTo("0001")
-        assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06010A03A00000")
-        val expected = RetailMac.compute(DemoCards.lab.masterKey, (cdolData + "1880" + "0001" + "03A00000").hexToBytes())
+        assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06011203A00000")
+        val sessionKey = SessionKeyDerivation.commonSessionKey(DemoCards.lab.masterKey, atc = 1)
+        val expected = RetailMac.compute(sessionKey, (cdolData + "1880" + "0001" + "03A00000").hexToBytes())
         assertThat(tlvs.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
     }
 
@@ -104,7 +106,7 @@ class VirtualCardTest {
         startTransaction()
         val aac = BerTlv.parse(send(EmvCommands.generateAc(CryptogramType.AAC, cdolData.hexToBytes())).data)
         assertThat(aac.valueOf(EmvTags.CRYPTOGRAM_INFORMATION_DATA)!!.toHex()).isEqualTo("00")
-        assertThat(aac.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06010A03800000")
+        assertThat(aac.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06011203800000")
     }
 
     @Test
@@ -131,6 +133,29 @@ class VirtualCardTest {
         assertThat(send(EmvCommands.getData(EmvTags.PDOL)).sw).isEqualTo(StatusWord.REFERENCED_DATA_NOT_FOUND)
         card.resetCounter()
         assertThat(card.atc).isEqualTo(0)
+    }
+
+    @Test
+    fun `holds the key derived from the issuer master key`() {
+        assertThat(DemoCards.lab.masterKey.toHex()).isEqualTo("0116F2F17C70E09E2A4ACD43A8C29886")
+    }
+
+    @Test
+    fun `can still sign with the card key directly`() {
+        val profile = CardProfile(
+            aid = DemoCards.lab.aid, label = "CVN 10", pan = DemoCards.lab.pan, expiry = DemoCards.lab.expiry,
+            effective = DemoCards.lab.effective, cardholderName = "TEST", panSequenceNumber = 1, issuerCountryCode = 840,
+            currencyCode = 840, masterKey = DemoCards.lab.masterKey, cryptogramVersion = CryptogramVersion.CARD_KEY,
+        )
+        val legacy = VirtualCard(profile)
+        legacy.process(EmvCommands.select(profile.aid).encode())
+        legacy.process(EmvCommands.getProcessingOptions(pdolData).encode())
+
+        val tlvs = BerTlv.parse(ResponseApdu.parse(legacy.process(EmvCommands.generateAc(CryptogramType.ARQC, cdolData.hexToBytes()).encode())).data)
+
+        assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06010A03A00000")
+        val expected = RetailMac.compute(DemoCards.lab.masterKey, (cdolData + "1880" + "0001" + "03A00000").hexToBytes())
+        assertThat(tlvs.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
     }
 
     @Test

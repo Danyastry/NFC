@@ -101,7 +101,8 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
         if (command.data.size != Dol.totalLength(files.cdol1)) return ResponseApdu.status(StatusWord.WRONG_LENGTH)
         val type = if (requested == CryptogramType.AAC) CryptogramType.AAC else CryptogramType.ARQC
         val atcBytes = atc.toBytes(2)
-        val cryptogram = CardCryptogram.compute(profile.masterKey, command.data, files.aip, atcBytes, type)
+        val key = CardCryptogram.key(profile.masterKey, profile.cryptogramVersion, atc)
+        val cryptogram = CardCryptogram.compute(key, command.data, files.aip, atc, CardCryptogram.cvr(type))
         session = CardSession.COMPLETED
         return ResponseApdu.success(
             Tlv.constructed(
@@ -109,7 +110,7 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
                 Tlv.primitive(EmvTags.CRYPTOGRAM_INFORMATION_DATA, byteArrayOf(type.bits.toByte())),
                 Tlv.primitive(EmvTags.ATC, atcBytes),
                 Tlv.primitive(EmvTags.APPLICATION_CRYPTOGRAM, cryptogram),
-                Tlv.primitive(EmvTags.ISSUER_APPLICATION_DATA, CardCryptogram.issuerApplicationData(type)),
+                Tlv.primitive(EmvTags.ISSUER_APPLICATION_DATA, CardCryptogram.issuerApplicationData(type, profile.cryptogramVersion)),
             ).encode(),
         )
     }

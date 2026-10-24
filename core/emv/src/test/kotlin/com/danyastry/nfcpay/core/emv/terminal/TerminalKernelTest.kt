@@ -8,6 +8,7 @@ import com.danyastry.nfcpay.core.emv.apdu.StatusWord
 import com.danyastry.nfcpay.core.emv.card.CardCryptogram
 import com.danyastry.nfcpay.core.emv.card.CardProfile
 import com.danyastry.nfcpay.core.emv.card.CryptogramType
+import com.danyastry.nfcpay.core.emv.card.CryptogramVersion
 import com.danyastry.nfcpay.core.emv.card.DemoCards
 import com.danyastry.nfcpay.core.emv.card.VirtualCard
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
@@ -19,6 +20,7 @@ import com.danyastry.nfcpay.core.emv.transport.CardTransport
 import com.danyastry.nfcpay.core.emv.transport.LoopbackTransport
 import com.danyastry.nfcpay.core.emv.util.hexToBytes
 import com.danyastry.nfcpay.core.emv.util.toHex
+import com.danyastry.nfcpay.core.emv.util.toUnsignedInt
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -77,12 +79,13 @@ class TerminalKernelTest {
             EmvTags.AMOUNT_AUTHORISED, EmvTags.AMOUNT_OTHER, EmvTags.TERMINAL_COUNTRY, EmvTags.TVR,
             EmvTags.TRANSACTION_CURRENCY, EmvTags.TRANSACTION_DATE, EmvTags.TRANSACTION_TYPE, EmvTags.UNPREDICTABLE_NUMBER,
         ).fold(ByteArray(0)) { acc, tag -> acc + field55.valueOf(tag)!! }
+        val atc = field55.valueOf(EmvTags.ATC)!!.toUnsignedInt()
         val recomputed = CardCryptogram.compute(
-            key = DemoCards.lab.masterKey,
+            key = CardCryptogram.key(DemoCards.lab.masterKey, CryptogramVersion.SESSION_KEY, atc),
             cdolData = cdolData,
             aip = field55.valueOf(EmvTags.AIP)!!,
-            atc = field55.valueOf(EmvTags.ATC)!!,
-            type = CryptogramType.ARQC,
+            atc = atc,
+            cvr = CardCryptogram.cvr(CryptogramType.ARQC),
         )
         assertThat(field55.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(recomputed)
         assertThat(field55.valueOf(EmvTags.TRANSACTION_DATE)!!.toHex()).isEqualTo("261023")
