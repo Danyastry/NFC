@@ -3,6 +3,8 @@ package com.danyastry.nfcpay.feature.terminal.ui
 import com.danyastry.nfcpay.core.emv.card.CryptogramType
 import com.danyastry.nfcpay.core.emv.card.DemoCards
 import com.danyastry.nfcpay.core.emv.card.VirtualCard
+import com.danyastry.nfcpay.core.emv.issuer.DemoIssuer
+import com.danyastry.nfcpay.core.emv.issuer.IssuerAuthorizer
 import com.danyastry.nfcpay.core.emv.terminal.TerminalError
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
@@ -53,6 +55,25 @@ class TerminalViewModelTest {
         assertThat(tap.maskCardData).isFalse()
         assertThat((tap.result.outcome as TransactionOutcome.Completed).decision).isEqualTo(CryptogramType.ARQC)
         assertThat(card.atc).isEqualTo(1)
+    }
+
+    @Test
+    fun `the virtual card goes online and real cards do not`() = runTest {
+        val issuer = DemoIssuer.create()
+        val online = TerminalViewModel(card, IssuerAuthorizer(issuer), today = { LocalDate.of(2026, 10, 23) })
+
+        online.onTap()
+        advanceUntilIdle()
+        val simulated = online.state.value.lastTap!!.result.outcome as TransactionOutcome.Completed
+        assertThat(simulated.online!!.isApproved).isTrue()
+
+        online.onSourceChange(CardSource.NFC)
+        online.onTap()
+        online.onCardPresented { CardTransport { card.process(it) } }
+        advanceUntilIdle()
+        val real = online.state.value.lastTap!!.result.outcome as TransactionOutcome.Completed
+        assertThat(real.online).isNull()
+        assertThat(issuer.account(DemoCards.lab.pan, 1)!!.lastAtc).isEqualTo(1)
     }
 
     @Test

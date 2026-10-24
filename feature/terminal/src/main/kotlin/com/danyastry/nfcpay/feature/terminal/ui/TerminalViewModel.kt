@@ -3,6 +3,7 @@ package com.danyastry.nfcpay.feature.terminal.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.danyastry.nfcpay.core.emv.card.ApduHandler
+import com.danyastry.nfcpay.core.emv.terminal.OnlineAuthorizer
 import com.danyastry.nfcpay.core.emv.terminal.TerminalKernel
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.emv.terminal.TransactionRequest
@@ -24,7 +25,7 @@ import java.time.LocalDate
 
 class TerminalViewModel(
     private val simulatedCard: ApduHandler,
-    private val kernel: TerminalKernel = TerminalKernel(),
+    private val authorizer: OnlineAuthorizer? = null,
     private val today: () -> LocalDate = LocalDate::now,
 ) : ViewModel() {
 
@@ -44,7 +45,7 @@ class TerminalViewModel(
         val amount = current.amount ?: return
         if (current.phase != TerminalPhase.IDLE) return
         when (current.source) {
-            CardSource.SIMULATED -> run(CardSource.SIMULATED, amount) { LoopbackTransport(simulatedCard) }
+            CardSource.SIMULATED -> run(CardSource.SIMULATED, amount, TerminalKernel(authorizer = authorizer)) { LoopbackTransport(simulatedCard) }
             CardSource.NFC -> _state.update { it.copy(phase = TerminalPhase.WAITING_FOR_CARD) }
         }
     }
@@ -57,10 +58,10 @@ class TerminalViewModel(
         val current = _state.value
         if (current.phase != TerminalPhase.WAITING_FOR_CARD) return
         val amount = current.amount ?: return
-        run(CardSource.NFC, amount, open)
+        run(CardSource.NFC, amount, TerminalKernel(), open)
     }
 
-    private fun run(source: CardSource, amount: Long, open: suspend () -> CardTransport) {
+    private fun run(source: CardSource, amount: Long, kernel: TerminalKernel, open: suspend () -> CardTransport) {
         _state.update { it.copy(phase = TerminalPhase.READING) }
         viewModelScope.launch {
             val result = try {

@@ -10,6 +10,7 @@ sealed interface TransactionOutcome {
         val tvr: Tvr,
         val cardholderVerificationRequired: Boolean,
         val field55: String,
+        val online: OnlineResult? = null,
     ) : TransactionOutcome {
         val decision: CryptogramType
             get() = cryptogram.type

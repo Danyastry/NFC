@@ -29,9 +29,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.danyastry.nfcpay.core.emv.mask.SensitiveData
+import com.danyastry.nfcpay.core.emv.issuer.ResponseCode
+import com.danyastry.nfcpay.core.emv.terminal.OnlineResponse
+import com.danyastry.nfcpay.core.emv.terminal.OnlineResult
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.nfc.hce.ApduSource
 import com.danyastry.nfcpay.core.nfc.hce.SharedCard
+import com.danyastry.nfcpay.core.nfc.issuer.SharedIssuer
 import com.danyastry.nfcpay.core.nfc.radio.NfcAvailability
 import com.danyastry.nfcpay.core.nfc.reader.IsoDepTransport
 import com.danyastry.nfcpay.core.nfc.reader.ReaderModeEffect
@@ -50,7 +54,7 @@ import java.time.format.DateTimeFormatter
 fun TerminalRoute(modifier: Modifier = Modifier) {
     val viewModel: TerminalViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { TerminalViewModel(SharedCard.host.handler(ApduSource.SIMULATED)) }
+            initializer { TerminalViewModel(SharedCard.host.handler(ApduSource.SIMULATED), SharedIssuer.link.authorizer) }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -189,6 +193,7 @@ private fun CompletedDetails(outcome: TransactionOutcome.Completed, tap: Complet
         text = "${AmountInput.format(tap.amount)} ${stringResource(R.string.terminal_currency)}",
         style = MaterialTheme.typography.headlineSmall,
     )
+    outcome.online?.let { OnlineSummary(it) }
     Text(stringResource(outcome.decision.decisionRes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     Text(stringResource(R.string.terminal_card, listOfNotNull(card.scheme?.label, card.label).distinctBy { it.lowercase() }.joinToString(" · ")))
     Text(stringResource(R.string.terminal_pan, SensitiveData.groupPan(pan)), fontFamily = FontFamily.Monospace)
@@ -215,6 +220,28 @@ private fun CompletedDetails(outcome: TransactionOutcome.Completed, tap: Complet
         style = MaterialTheme.typography.bodySmall,
         fontFamily = FontFamily.Monospace,
     )
+}
+
+@Composable
+private fun OnlineSummary(online: OnlineResult) {
+    Text(
+        text = stringResource(if (online.isApproved) R.string.terminal_approved else R.string.terminal_declined),
+        style = MaterialTheme.typography.titleLarge,
+        color = if (online.isApproved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+    )
+    Text(stringResource(R.string.terminal_issuer_answer, online.responseCode, responseDescription(online.responseCode)))
+    online.finalCryptogram?.let {
+        Text(stringResource(R.string.terminal_final_cryptogram, it.type.label, it.value), fontFamily = FontFamily.Monospace)
+    }
+    if (online.cardOverruledIssuer) {
+        Text(stringResource(R.string.terminal_card_overruled), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun responseDescription(code: String): String = when (code) {
+    OnlineResponse.UNABLE_TO_GO_ONLINE -> stringResource(R.string.terminal_unable_online)
+    else -> ResponseCode.entries.firstOrNull { it.code == code }?.description ?: stringResource(R.string.terminal_unknown_code)
 }
 
 private val EXPIRY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/yy")
