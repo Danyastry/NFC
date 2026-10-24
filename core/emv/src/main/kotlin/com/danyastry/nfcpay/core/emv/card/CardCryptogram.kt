@@ -7,6 +7,7 @@ import com.danyastry.nfcpay.core.emv.util.toBytes
 object CardCryptogram {
 
     const val IAD_LENGTH = 7
+    const val DKI_OFFSET = 1
     const val CVN_OFFSET = 2
     const val CVR_OFFSET = 3
     const val DERIVATION_KEY_INDEX: Byte = 0x01
@@ -22,12 +23,13 @@ object CardCryptogram {
     fun issuerApplicationData(type: CryptogramType, version: CryptogramVersion): ByteArray =
         issuerApplicationData(version, cvr(type))
 
-    fun issuerApplicationData(version: CryptogramVersion, cvr: ByteArray): ByteArray =
-        byteArrayOf((IAD_LENGTH - 1).toByte(), DERIVATION_KEY_INDEX, version.code.toByte()) + cvr
+    fun issuerApplicationData(version: CryptogramVersion, cvr: ByteArray, derivationKeyIndex: Int = DERIVATION_KEY_INDEX.toInt()): ByteArray =
+        byteArrayOf((IAD_LENGTH - 1).toByte(), derivationKeyIndex.toByte(), version.code.toByte()) + cvr
 
     fun key(cardMasterKey: ByteArray, version: CryptogramVersion, atc: Int): ByteArray = when (version) {
         CryptogramVersion.CARD_KEY -> cardMasterKey
         CryptogramVersion.SESSION_KEY -> SessionKeyDerivation.commonSessionKey(cardMasterKey, atc)
+        CryptogramVersion.LIMITED_USE_KEY -> cardMasterKey
     }
 
     fun compute(key: ByteArray, cdolData: ByteArray, aip: ByteArray, atc: Int, cvr: ByteArray): ByteArray =

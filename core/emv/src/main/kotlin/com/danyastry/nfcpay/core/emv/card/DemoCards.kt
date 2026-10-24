@@ -2,6 +2,8 @@ package com.danyastry.nfcpay.core.emv.card
 
 import com.danyastry.nfcpay.core.emv.crypto.IccKeyDerivation
 import com.danyastry.nfcpay.core.emv.terminal.PaymentScheme
+import com.danyastry.nfcpay.core.emv.token.TokenRecord
+import com.danyastry.nfcpay.core.emv.token.TokenService
 import com.danyastry.nfcpay.core.emv.util.hexToBytes
 import java.time.YearMonth
 
@@ -24,4 +26,22 @@ object DemoCards {
         currencyCode = 840,
         masterKey = IccKeyDerivation.optionA(issuerMasterKey, PAN, PAN_SEQUENCE_NUMBER),
     )
+
+    val walletRequestorId: String = "40010030273"
+
+    fun tokenCard(token: TokenRecord): CardProfile = CardProfile(
+        aid = lab.aid,
+        label = lab.label,
+        pan = token.token,
+        expiry = token.expiry,
+        effective = lab.effective,
+        cardholderName = lab.cardholderName,
+        panSequenceNumber = TokenService.TOKEN_SEQUENCE_NUMBER,
+        issuerCountryCode = lab.issuerCountryCode,
+        currencyCode = lab.currencyCode,
+        masterKey = NO_CARD_KEY,
+        cryptogramVersion = CryptogramVersion.LIMITED_USE_KEY,
+    )
+
+    private val NO_CARD_KEY = ByteArray(16)
 }
