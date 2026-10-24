@@ -13,7 +13,11 @@ import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.tlv.Tlv
 import com.danyastry.nfcpay.core.emv.util.toBytes
 
-class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
+class VirtualCard(
+    val profile: CardProfile,
+    initialAtc: Int = 0,
+    private val keys: CardKeys = StaticCardKeys(profile.masterKey, profile.cryptogramVersion),
+) : ApduHandler {
 
     private val files = CardFiles(profile)
     private var session = CardSession.IDLE
@@ -84,6 +88,7 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
             return ResponseApdu.status(StatusWord.WRONG_LENGTH)
         }
         if (atc >= MAX_ATC) return ResponseApdu.status(StatusWord.CONDITIONS_NOT_SATISFIED)
+        if (!keys.startTransaction(atc + 1)) return ResponseApdu.status(StatusWord.CONDITIONS_NOT_SATISFIED)
         atc++
         session = CardSession.PROCESSING
         return ResponseApdu.success(
@@ -112,7 +117,7 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
         val requested = CryptogramType.fromBits(command.p1) ?: return ResponseApdu.status(StatusWord.INCORRECT_P1_P2)
         if (command.data.size != Dol.totalLength(files.cdol1)) return ResponseApdu.status(StatusWord.WRONG_LENGTH)
         val type = if (requested == CryptogramType.AAC) CryptogramType.AAC else CryptogramType.ARQC
-        val key = CardCryptogram.key(profile.masterKey, profile.cryptogramVersion, atc)
+        val key = keys.cryptogramKey()
         val cvr = CardCryptogram.cvr(type)
         val cryptogram = CardCryptogram.compute(key, command.data, files.aip, atc, cvr)
         if (type == CryptogramType.ARQC) {
@@ -121,7 +126,7 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
         } else {
             session = CardSession.COMPLETED
         }
-        return cryptogramResponse(type, cryptogram, CardCryptogram.issuerApplicationData(type, profile.cryptogramVersion))
+        return cryptogramResponse(type, cryptogram, CardCryptogram.issuerApplicationData(keys.version, cvr, keys.derivationKeyIndex))
     }
 
     private fun secondGenerateAc(command: CommandApdu): ResponseApdu {
@@ -141,7 +146,7 @@ class VirtualCard(val profile: CardProfile, initialAtc: Int = 0) : ApduHandler {
         lastIssuerAuthentication = authentication
         firstAc = null
         session = CardSession.COMPLETED
-        return cryptogramResponse(type, cryptogram, CardCryptogram.issuerApplicationData(profile.cryptogramVersion, cvr))
+        return cryptogramResponse(type, cryptogram, CardCryptogram.issuerApplicationData(keys.version, cvr, keys.derivationKeyIndex))
     }
 
     private fun authenticateIssuer(first: FirstAc, issuerData: ByteArray, responseCode: ByteArray): IssuerAuthentication {

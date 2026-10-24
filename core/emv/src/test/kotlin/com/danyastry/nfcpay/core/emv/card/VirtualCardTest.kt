@@ -10,6 +10,11 @@ import com.danyastry.nfcpay.core.emv.crypto.SessionKeyDerivation
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.tlv.valueOf
+import com.danyastry.nfcpay.core.emv.token.LimitedUseKey
+import com.danyastry.nfcpay.core.emv.token.TokenDomain
+import com.danyastry.nfcpay.core.emv.token.TokenRecord
+import com.danyastry.nfcpay.core.emv.token.TokenStatus
+import com.danyastry.nfcpay.core.emv.token.WalletKeys
 import com.danyastry.nfcpay.core.emv.util.hexToBytes
 import com.danyastry.nfcpay.core.emv.util.toHex
 import com.google.common.truth.Truth.assertThat
@@ -242,6 +247,29 @@ class VirtualCardTest {
         assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06010A03A00000")
         val expected = RetailMac.compute(DemoCards.lab.masterKey, (cdolData + "1C80" + "0001" + "03A00000").hexToBytes())
         assertThat(tlvs.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
+    }
+
+    @Test
+    fun `a wallet card signs with its limited-use key and stops when it runs out`() {
+        val luk = LimitedUseKey(index = 7, key = "15DA1C19C285D3917A0898D5FDC75785".hexToBytes(), usesLeft = 1)
+        val token = TokenRecord("9999501234567890", DemoCards.lab.pan, 0, DemoCards.lab.expiry, DemoCards.walletRequestorId, TokenDomain.CONTACTLESS, TokenStatus.ACTIVE, "Q999" + "0".repeat(25))
+        val keys = WalletKeys(luk)
+        val wallet = VirtualCard(DemoCards.tokenCard(token), keys = keys)
+        wallet.process(EmvCommands.select(DemoCards.lab.aid).encode())
+        wallet.process(EmvCommands.getProcessingOptions(pdolData).encode())
+
+        val tlvs = BerTlv.parse(ResponseApdu.parse(wallet.process(EmvCommands.generateAc(CryptogramType.ARQC, cdolData.hexToBytes()).encode())).data)
+
+        assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06074303A00000")
+        val expected = RetailMac.compute(luk.key, (cdolData + "1C80" + "0001" + "03A00000").hexToBytes())
+        assertThat(tlvs.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
+        assertThat(BerTlv.parse(ResponseApdu.parse(wallet.process(EmvCommands.readRecord(1, 2).encode())).data).valueOf(EmvTags.PAN)!!.toHex())
+            .isEqualTo("9999501234567890")
+
+        wallet.process(EmvCommands.select(DemoCards.lab.aid).encode())
+        assertThat(ResponseApdu.parse(wallet.process(EmvCommands.getProcessingOptions(pdolData).encode())).sw)
+            .isEqualTo(StatusWord.CONDITIONS_NOT_SATISFIED)
+        assertThat(wallet.atc).isEqualTo(1)
     }
 
     @Test
