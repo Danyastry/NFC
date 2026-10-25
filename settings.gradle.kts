@@ -26,6 +26,7 @@ rootProject.name = "nfcpay"
 
 include(":app")
 include(":core:emv")
+include(":core:ndef")
 include(":core:nfc")
 include(":core:ui")
 
