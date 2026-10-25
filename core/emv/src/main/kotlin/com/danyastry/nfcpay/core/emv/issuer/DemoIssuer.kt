@@ -1,6 +1,7 @@
 package com.danyastry.nfcpay.core.emv.issuer
 
 import com.danyastry.nfcpay.core.emv.card.DemoCards
+import com.danyastry.nfcpay.core.emv.hsm.PinService
 import com.danyastry.nfcpay.core.emv.token.TokenService
 
 object DemoIssuer {
@@ -14,6 +15,6 @@ object DemoIssuer {
         balance = OPENING_BALANCE,
     )
 
-    fun create(tokens: TokenService? = null): IssuerHost =
-        IssuerHost(DemoCards.issuerMasterKey, listOf(account()), tokens = tokens)
+    fun create(tokens: TokenService? = null, pins: PinService? = null): IssuerHost =
+        IssuerHost(DemoCards.issuerMasterKey, listOf(account()), tokens = tokens, pins = pins)
 }

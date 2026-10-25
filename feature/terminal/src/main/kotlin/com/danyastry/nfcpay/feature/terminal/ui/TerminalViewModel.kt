@@ -3,7 +3,10 @@ package com.danyastry.nfcpay.feature.terminal.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.danyastry.nfcpay.core.emv.card.ApduHandler
+import com.danyastry.nfcpay.core.emv.dukpt.EncryptedPin
+import com.danyastry.nfcpay.core.emv.mask.SensitiveData
 import com.danyastry.nfcpay.core.emv.terminal.OnlineAuthorizer
+import com.danyastry.nfcpay.core.emv.terminal.PinPad
 import com.danyastry.nfcpay.core.emv.terminal.TerminalKernel
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.emv.terminal.TransactionRequest
@@ -13,7 +16,10 @@ import com.danyastry.nfcpay.core.emv.transport.CardTransport
 import com.danyastry.nfcpay.core.emv.transport.LoopbackTransport
 import com.danyastry.nfcpay.feature.terminal.model.CardSource
 import com.danyastry.nfcpay.feature.terminal.model.TerminalPhase
+import com.danyastry.nfcpay.feature.terminal.logic.AmountInput
 import com.danyastry.nfcpay.feature.terminal.state.CompletedTap
+import com.danyastry.nfcpay.feature.terminal.state.PinPrompt
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,11 +33,37 @@ class TerminalViewModel(
     private val simulatedCard: ApduHandler,
     private val authorizer: OnlineAuthorizer? = null,
     private val walletCard: () -> ApduHandler? = { null },
+    private val encryptPin: ((pin: String, pan: String) -> EncryptedPin)? = null,
     private val today: () -> LocalDate = LocalDate::now,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TerminalUiState())
     val state: StateFlow<TerminalUiState> = _state.asStateFlow()
+
+    private var pendingPin: CompletableDeferred<String?>? = null
+
+    private val pinPad: PinPad? = encryptPin?.let { encrypt ->
+        PinPad { pan, amount ->
+            val entry = CompletableDeferred<String?>()
+            pendingPin = entry
+            _state.update { it.copy(pinPrompt = PinPrompt(SensitiveData.maskPan(pan), AmountInput.format(amount))) }
+            val pin = try {
+                entry.await()
+            } finally {
+                pendingPin = null
+                _state.update { it.copy(pinPrompt = null) }
+            }
+            pin?.let { encrypt(it, pan) }
+        }
+    }
+
+    fun onPinSubmit(pin: String) {
+        pendingPin?.complete(pin)
+    }
+
+    fun onPinCancel() {
+        pendingPin?.complete(null)
+    }
 
     fun onSourceChange(source: CardSource) {
         _state.update { if (it.phase == TerminalPhase.READING) it else it.copy(source = source, phase = TerminalPhase.IDLE) }
@@ -46,7 +78,9 @@ class TerminalViewModel(
         val amount = current.amount ?: return
         if (current.phase != TerminalPhase.IDLE) return
         when (current.source) {
-            CardSource.SIMULATED -> run(CardSource.SIMULATED, amount, TerminalKernel(authorizer = authorizer)) { LoopbackTransport(simulatedCard) }
+            CardSource.SIMULATED -> run(CardSource.SIMULATED, amount, TerminalKernel(authorizer = authorizer, pinPad = pinPad)) {
+                LoopbackTransport(simulatedCard)
+            }
             CardSource.WALLET -> walletCard()?.let { phone ->
                 run(CardSource.WALLET, amount, TerminalKernel(authorizer = authorizer)) { LoopbackTransport(phone) }
             }

@@ -34,6 +34,7 @@ val TerminalError.messageRes: Int
         TerminalError.GENERATE_AC_FAILED -> R.string.terminal_error_generate_ac
         TerminalError.MISSING_CRYPTOGRAM -> R.string.terminal_error_cryptogram
         TerminalError.MISSING_PAN -> R.string.terminal_error_pan
+        TerminalError.PIN_ENTRY_CANCELLED -> R.string.terminal_error_pin_cancelled
         TerminalError.MALFORMED_RESPONSE -> R.string.terminal_error_malformed
         TerminalError.CARD_LOST -> R.string.terminal_error_card_lost
     }
