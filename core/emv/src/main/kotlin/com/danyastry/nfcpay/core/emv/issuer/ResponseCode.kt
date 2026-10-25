@@ -6,6 +6,7 @@ enum class ResponseCode(val code: String, val description: String) {
     INVALID_CARD_NUMBER("14", "Invalid card number"),
     INSUFFICIENT_FUNDS("51", "Insufficient funds"),
     EXPIRED_CARD("54", "Expired card"),
+    RESTRICTED_CARD("62", "Restricted card"),
     SECURITY_VIOLATION("63", "Security violation");
 
     val bytes: ByteArray
