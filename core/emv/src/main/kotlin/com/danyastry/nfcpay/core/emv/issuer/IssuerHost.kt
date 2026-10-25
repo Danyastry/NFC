@@ -141,7 +141,7 @@ class IssuerHost(
             val responseCode = reason?.responseCode ?: ResponseCode.APPROVED
             if (reason == null) {
                 accounts[key(account.pan, account.panSequenceNumber)] = counted.copy(balance = account.balance - requested)
-                step("Funds", "$requested of ${account.balance} available", passed = true)
+                step("Funds", "${money(requested)} of ${money(account.balance)} available", passed = true)
             } else {
                 step(reason.description, responseCode.description, passed = false)
             }
@@ -180,6 +180,8 @@ class IssuerHost(
     }
 
     private fun key(pan: String, panSequenceNumber: Int) = "$pan/$panSequenceNumber"
+
+    private fun money(minor: Long): String = "%d.%02d".format(minor / 100, minor % 100)
 
     private companion object {
         val REQUIRED_TAGS = listOf(

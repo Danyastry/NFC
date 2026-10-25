@@ -26,6 +26,7 @@ import java.time.LocalDate
 class TerminalViewModel(
     private val simulatedCard: ApduHandler,
     private val authorizer: OnlineAuthorizer? = null,
+    private val walletCard: () -> ApduHandler? = { null },
     private val today: () -> LocalDate = LocalDate::now,
 ) : ViewModel() {
 
@@ -46,6 +47,9 @@ class TerminalViewModel(
         if (current.phase != TerminalPhase.IDLE) return
         when (current.source) {
             CardSource.SIMULATED -> run(CardSource.SIMULATED, amount, TerminalKernel(authorizer = authorizer)) { LoopbackTransport(simulatedCard) }
+            CardSource.WALLET -> walletCard()?.let { phone ->
+                run(CardSource.WALLET, amount, TerminalKernel(authorizer = authorizer)) { LoopbackTransport(phone) }
+            }
             CardSource.NFC -> _state.update { it.copy(phase = TerminalPhase.WAITING_FOR_CARD) }
         }
     }

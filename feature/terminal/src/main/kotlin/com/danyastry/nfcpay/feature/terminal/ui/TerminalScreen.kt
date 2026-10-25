@@ -32,6 +32,7 @@ import com.danyastry.nfcpay.core.emv.mask.SensitiveData
 import com.danyastry.nfcpay.core.emv.issuer.ResponseCode
 import com.danyastry.nfcpay.core.emv.terminal.OnlineResponse
 import com.danyastry.nfcpay.core.emv.terminal.OnlineResult
+import com.danyastry.nfcpay.core.emv.terminal.TerminalError
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.nfc.hce.ApduSource
 import com.danyastry.nfcpay.core.nfc.hce.SharedCard
@@ -39,6 +40,7 @@ import com.danyastry.nfcpay.core.nfc.issuer.SharedIssuer
 import com.danyastry.nfcpay.core.nfc.radio.NfcAvailability
 import com.danyastry.nfcpay.core.nfc.reader.IsoDepTransport
 import com.danyastry.nfcpay.core.nfc.reader.ReaderModeEffect
+import com.danyastry.nfcpay.core.nfc.wallet.SharedWallet
 import com.danyastry.nfcpay.core.nfc.ui.ExchangeCard
 import com.danyastry.nfcpay.core.nfc.ui.NfcStatusBanner
 import com.danyastry.nfcpay.core.nfc.ui.rememberNfcAvailability
@@ -54,10 +56,17 @@ import java.time.format.DateTimeFormatter
 fun TerminalRoute(modifier: Modifier = Modifier) {
     val viewModel: TerminalViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { TerminalViewModel(SharedCard.host.handler(ApduSource.SIMULATED), SharedIssuer.link.authorizer) }
+            initializer {
+                TerminalViewModel(
+                    simulatedCard = SharedCard.host.handler(ApduSource.SIMULATED),
+                    authorizer = SharedIssuer.link.authorizer,
+                    walletCard = SharedWallet.wallet::handler,
+                )
+            }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val wallet by SharedWallet.wallet.state.collectAsStateWithLifecycle()
     val nfc = rememberNfcAvailability()
     ReaderModeEffect(enabled = state.phase == TerminalPhase.WAITING_FOR_CARD && nfc.canUseRadio) { isoDep ->
         viewModel.onCardPresented { IsoDepTransport.open(isoDep) }
@@ -65,6 +74,7 @@ fun TerminalRoute(modifier: Modifier = Modifier) {
     TerminalScreen(
         state = state,
         nfc = nfc,
+        walletReady = wallet != null,
         actions = TerminalActions(
             onSourceChange = viewModel::onSourceChange,
             onAmountChange = viewModel::onAmountChange,
@@ -79,6 +89,7 @@ fun TerminalRoute(modifier: Modifier = Modifier) {
 fun TerminalScreen(
     state: TerminalUiState,
     nfc: NfcAvailability,
+    walletReady: Boolean,
     actions: TerminalActions,
     modifier: Modifier = Modifier,
 ) {
@@ -98,7 +109,7 @@ fun TerminalScreen(
             )
         }
         item { AmountField(state, actions) }
-        item { TapControls(state, nfc, actions) }
+        item { TapControls(state, nfc, walletReady, actions) }
         if (tap != null) {
             item { OutcomeCard(tap) }
             item {
@@ -138,16 +149,17 @@ private fun AmountField(state: TerminalUiState, actions: TerminalActions) {
 }
 
 @Composable
-private fun TapControls(state: TerminalUiState, nfc: NfcAvailability, actions: TerminalActions) {
+private fun TapControls(state: TerminalUiState, nfc: NfcAvailability, walletReady: Boolean, actions: TerminalActions) {
     val needsRadio = state.source == CardSource.NFC && !nfc.canUseRadio
+    val needsWallet = state.source == CardSource.WALLET && !walletReady
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when (state.phase) {
             TerminalPhase.IDLE -> Button(
                 onClick = actions.onTap,
-                enabled = state.canTap && !needsRadio,
+                enabled = state.canTap && !needsRadio && !needsWallet,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(stringResource(if (state.source == CardSource.SIMULATED) R.string.terminal_tap else R.string.terminal_wait))
+                Text(stringResource(if (state.source == CardSource.NFC) R.string.terminal_wait else R.string.terminal_tap))
             }
             TerminalPhase.WAITING_FOR_CARD -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(modifier = Modifier.padding(4.dp))
@@ -158,6 +170,9 @@ private fun TapControls(state: TerminalUiState, nfc: NfcAvailability, actions: T
                 CircularProgressIndicator(modifier = Modifier.padding(4.dp))
                 Text(stringResource(R.string.terminal_reading))
             }
+        }
+        if (needsWallet) {
+            Text(stringResource(R.string.terminal_wallet_needed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
         if (needsRadio) {
             Text(stringResource(R.string.terminal_nfc_needed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -179,6 +194,9 @@ private fun OutcomeCard(tap: CompletedTap) {
                         color = MaterialTheme.colorScheme.error,
                     )
                     outcome.sw?.let { Text(stringResource(R.string.terminal_failed_sw, "%04X".format(it))) }
+                    if (tap.source == CardSource.WALLET && outcome.error == TerminalError.PROCESSING_OPTIONS_REFUSED) {
+                        Text(stringResource(R.string.terminal_wallet_out_of_keys), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
