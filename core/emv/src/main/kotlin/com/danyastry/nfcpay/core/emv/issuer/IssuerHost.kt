@@ -14,6 +14,9 @@ import com.danyastry.nfcpay.core.emv.tags.EmvTags
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.tlv.Tag
 import com.danyastry.nfcpay.core.emv.tlv.TlvFormatException
+import com.danyastry.nfcpay.core.emv.token.DetokenizeResult
+import com.danyastry.nfcpay.core.emv.token.TokenDomain
+import com.danyastry.nfcpay.core.emv.token.TokenService
 import com.danyastry.nfcpay.core.emv.util.Bcd
 import com.danyastry.nfcpay.core.emv.util.toHex
 import com.danyastry.nfcpay.core.emv.util.toUnsignedInt
@@ -23,8 +26,11 @@ class IssuerHost(
     private val issuerMasterKey: ByteArray,
     accounts: List<IssuerAccount>,
     private val cdol1: List<DolEntry> = CardFiles.CDOL1,
+    private val tokens: TokenService? = null,
 ) {
     private val accounts = accounts.associateBy { key(it.pan, it.panSequenceNumber) }.toMutableMap()
+    private val tokenCounters = mutableMapOf<String, Int>()
+    private val keyUses = mutableMapOf<String, Int>()
 
     @Synchronized
     fun account(pan: String, panSequenceNumber: Int): IssuerAccount? = accounts[key(pan, panSequenceNumber)]
@@ -32,6 +38,8 @@ class IssuerHost(
     @Synchronized
     fun reset(accounts: List<IssuerAccount>) {
         this.accounts.clear()
+        tokenCounters.clear()
+        keyUses.clear()
         accounts.forEach { this.accounts[key(it.pan, it.panSequenceNumber)] = it }
     }
 
@@ -54,7 +62,21 @@ class IssuerHost(
             if (missing.isNotEmpty()) return decline(DeclineReason.MISSING_DATA, "Missing ${missing.joinToString { it.hex }}")
             step("Field 55", "${values.size} tags, all data the cryptogram covers is present", passed = true)
 
-            val account = account(request.pan, request.panSequenceNumber)
+            val service = tokens
+            val token = service?.takeIf { it.vault.isToken(request.pan) }?.let {
+                when (val result = it.vault.detokenize(request.pan, TokenDomain.CONTACTLESS, request.date)) {
+                    is DetokenizeResult.Refused -> return decline(DeclineReason.TOKEN_REFUSED, result.reason.description)
+                    is DetokenizeResult.Found -> result.record
+                }
+            }
+            if (token != null) {
+                step(
+                    "Token",
+                    "${SensitiveData.maskPan(token.token)} → ${SensitiveData.maskPan(token.pan)} · PAR ${token.paymentAccountReference}",
+                    passed = true,
+                )
+            }
+            val account = (if (token != null) account(token.pan, token.panSequenceNumber) else account(request.pan, request.panSequenceNumber))
                 ?: return decline(DeclineReason.UNKNOWN_ACCOUNT, SensitiveData.maskPan(request.pan))
             step("Account", "${SensitiveData.maskPan(account.pan)} · sequence ${account.panSequenceNumber}", passed = true)
 
@@ -64,10 +86,33 @@ class IssuerHost(
             val counter = values.getValue(EmvTags.ATC).toUnsignedInt().also { atc = it }
             val requested = Bcd.decodeNumber(values.getValue(EmvTags.AMOUNT_AUTHORISED)).also { amount = it }
 
-            val cardKey = IccKeyDerivation.optionA(issuerMasterKey, account.pan, account.panSequenceNumber)
-            step("Card key", "Option A from the issuer master key · KCV ${KeyCheckValue.of(cardKey)}", passed = true)
-            val key = CardCryptogram.key(cardKey, version, counter)
-            step("Cryptogram key", "${version.label} · ATC $counter · KCV ${KeyCheckValue.of(key)}", passed = true)
+            if ((token != null) != (version == CryptogramVersion.LIMITED_USE_KEY)) {
+                return decline(DeclineReason.WRONG_KEY_TYPE, version.label)
+            }
+            var keyUse: Pair<String, Int>? = null
+            val key = if (token != null && service != null) {
+                val index = iad[CardCryptogram.DKI_OFFSET].toInt() and 0xFF
+                val limitedUseKey = service.keyFor(token.token, index)
+                    ?: return decline(DeclineReason.KEY_RETIRED, "Key index $index, active ${service.activeKeyIndex(token.token)}")
+                val useKey = "${token.token}/$index"
+                val used = keyUses[useKey] ?: 0
+                if (used >= service.usesPerKey) {
+                    return decline(DeclineReason.KEY_EXHAUSTED, "Key index $index already signed $used of ${service.usesPerKey} taps")
+                }
+                keyUse = useKey to used + 1
+                step(
+                    "Limited-use key",
+                    "${version.label} · index $index · tap ${used + 1} of ${service.usesPerKey} · KCV ${KeyCheckValue.of(limitedUseKey)}",
+                    passed = true,
+                )
+                limitedUseKey
+            } else {
+                val cardKey = IccKeyDerivation.optionA(issuerMasterKey, account.pan, account.panSequenceNumber)
+                step("Card key", "Option A from the issuer master key · KCV ${KeyCheckValue.of(cardKey)}", passed = true)
+                CardCryptogram.key(cardKey, version, counter).also {
+                    step("Cryptogram key", "${version.label} · ATC $counter · KCV ${KeyCheckValue.of(it)}", passed = true)
+                }
+            }
 
             val cvr = iad.copyOfRange(CardCryptogram.CVR_OFFSET, CardCryptogram.IAD_LENGTH)
             val data = Dol.build(cdol1) { values[it] }
@@ -78,16 +123,24 @@ class IssuerHost(
             }
             step("ARQC", "${received.toHex()} matches the recomputed MAC", passed = true)
 
-            if (counter <= account.lastAtc) {
-                return decline(DeclineReason.REPLAYED_COUNTER, "ATC $counter, last seen ${account.lastAtc}")
+            val lastAtc = if (token != null) tokenCounters[token.token] ?: IssuerAccount.NO_TRANSACTIONS else account.lastAtc
+            if (counter <= lastAtc) {
+                return decline(DeclineReason.REPLAYED_COUNTER, "ATC $counter, last seen $lastAtc")
             }
-            step("Replay check", "ATC $counter is newer than ${account.lastAtc.takeIf { it >= 0 } ?: "none"}", passed = true)
-            accounts[key(account.pan, account.panSequenceNumber)] = account.copy(lastAtc = counter)
+            step("Replay check", "ATC $counter is newer than ${lastAtc.takeIf { it >= 0 } ?: "none"}", passed = true)
+            val counted = if (token != null) {
+                tokenCounters[token.token] = counter
+                keyUse?.let { (useKey, uses) -> keyUses[useKey] = uses }
+                account
+            } else {
+                account.copy(lastAtc = counter)
+            }
+            accounts[key(account.pan, account.panSequenceNumber)] = counted
 
             val reason = businessDecision(account, values, requested)
             val responseCode = reason?.responseCode ?: ResponseCode.APPROVED
             if (reason == null) {
-                accounts[key(account.pan, account.panSequenceNumber)] = account.copy(lastAtc = counter, balance = account.balance - requested)
+                accounts[key(account.pan, account.panSequenceNumber)] = counted.copy(balance = account.balance - requested)
                 step("Funds", "$requested of ${account.balance} available", passed = true)
             } else {
                 step(reason.description, responseCode.description, passed = false)
