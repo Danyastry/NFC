@@ -39,6 +39,7 @@ class IssuerHostTest {
         assertThat(response.amount).isEqualTo(12_50)
         assertThat(response.atc).isEqualTo(1)
         assertThat(response.steps.all { it.passed }).isTrue()
+        assertThat(response.steps.first { it.title == "Funds" }.detail).isEqualTo("12.50 of 250.00 available")
         assertThat(issuer.account(DemoCards.lab.pan, 1)!!.balance).isEqualTo(DemoIssuer.OPENING_BALANCE - 12_50)
         assertThat(issuer.account(DemoCards.lab.pan, 1)!!.lastAtc).isEqualTo(1)
     }

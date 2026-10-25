@@ -1,0 +1,20 @@
+<resources>
+    <string name="tokens_intro">A phone wallet never stores the card number. The token service gives it a token, a different number that only the vault can map back to the card, and keys that last a few taps.</string>
+    <string name="tokens_add">Add card to phone wallet</string>
+    <string name="tokens_wallet_title">Phone wallet · %1$s</string>
+    <string name="tokens_for_account">Stands for %1$s · expires %2$s</string>
+    <string name="tokens_par">PAR %1$s</string>
+    <string name="tokens_requestor">Token requestor %1$s · contactless only</string>
+    <string name="tokens_explain">Terminals and receipts see only the token. A leaked token is useless online and can be switched off without reissuing the card.</string>
+    <string name="tokens_key_title">Limited-use key %1$d · KCV %2$s</string>
+    <string name="tokens_taps_left">Taps left: %1$d of %2$d</string>
+    <string name="tokens_atc">Wallet transaction counter: %1$d</string>
+    <string name="tokens_key_explain">When the taps run out the wallet must ask the token service for a new key. The new key retires the old one, so a copied key stops working.</string>
+    <string name="tokens_replenish">Get new key</string>
+    <string name="tokens_lifecycle">Token lifecycle</string>
+    <string name="tokens_suspend">Suspend</string>
+    <string name="tokens_resume">Resume</string>
+    <string name="tokens_remove">Remove from wallet</string>
+    <string name="tokens_pay_hint">Pay with it on the payment terminal screen: choose Phone wallet. The issuer host screen shows how the bank maps the token back.</string>
+    <string name="tokens_vault">Tokens in the vault for this card: %1$d</string>
+</resources>

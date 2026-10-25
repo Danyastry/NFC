@@ -5,6 +5,9 @@ import com.danyastry.nfcpay.core.emv.card.DemoCards
 import com.danyastry.nfcpay.core.emv.card.VirtualCard
 import com.danyastry.nfcpay.core.emv.issuer.DemoIssuer
 import com.danyastry.nfcpay.core.emv.issuer.IssuerAuthorizer
+import com.danyastry.nfcpay.core.emv.token.TokenService
+import com.danyastry.nfcpay.core.emv.token.TokenVault
+import com.danyastry.nfcpay.core.nfc.wallet.PhoneWallet
 import com.danyastry.nfcpay.core.emv.terminal.TerminalError
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
@@ -74,6 +77,26 @@ class TerminalViewModelTest {
         val real = online.state.value.lastTap!!.result.outcome as TransactionOutcome.Completed
         assertThat(real.online).isNull()
         assertThat(issuer.account(DemoCards.lab.pan, 1)!!.lastAtc).isEqualTo(1)
+    }
+
+    @Test
+    fun `the phone wallet pays with its token`() = runTest {
+        val tokens = TokenService(TokenVault(), DemoCards.issuerMasterKey)
+        val wallet = PhoneWallet(tokens)
+        val viewModel = TerminalViewModel(card, IssuerAuthorizer(DemoIssuer.create(tokens)), walletCard = wallet::handler, today = { LocalDate.of(2026, 10, 25) })
+        viewModel.onSourceChange(CardSource.WALLET)
+
+        viewModel.onTap()
+        assertThat(viewModel.state.value.lastTap).isNull()
+
+        wallet.addCard()
+        viewModel.onTap()
+        advanceUntilIdle()
+
+        val outcome = viewModel.state.value.lastTap!!.result.outcome as TransactionOutcome.Completed
+        assertThat(outcome.card.pan).isEqualTo(wallet.state.value!!.token.token)
+        assertThat(outcome.online!!.isApproved).isTrue()
+        assertThat(viewModel.state.value.lastTap!!.maskCardData).isFalse()
     }
 
     @Test

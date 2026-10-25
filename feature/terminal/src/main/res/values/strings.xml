@@ -1,6 +1,9 @@
 <resources>
     <string name="terminal_source_simulated">Virtual card</string>
+    <string name="terminal_source_wallet">Phone wallet</string>
     <string name="terminal_source_nfc">Real card</string>
+    <string name="terminal_wallet_out_of_keys">The wallet has no taps left on its key. Get a new key on the Tokens screen.</string>
+    <string name="terminal_wallet_needed">The wallet is empty. Add the card on the Tokens screen first.</string>
     <string name="terminal_amount">Amount</string>
     <string name="terminal_currency">USD</string>
     <string name="terminal_amount_invalid">Enter an amount like 12.50</string>
@@ -10,7 +13,7 @@
     <string name="terminal_reading">Reading the card…</string>
     <string name="terminal_cancel">Cancel</string>
     <string name="terminal_nfc_needed">Reading real cards needs NFC. The virtual card works on any device.</string>
-    <string name="terminal_no_charge">Nothing is charged. The virtual card goes online to a demo issuer inside the app; a real card stops at the ARQC and nothing leaves this phone.</string>
+    <string name="terminal_no_charge">Nothing is charged. The virtual card and the wallet go online to a demo issuer inside the app; a real card stops at the ARQC and nothing leaves this phone.</string>
     <string name="terminal_approved">Approved</string>
     <string name="terminal_declined">Declined</string>
     <string name="terminal_issuer_answer">Issuer: %1$s · %2$s</string>

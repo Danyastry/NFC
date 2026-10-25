@@ -31,6 +31,7 @@ dependencies {
     implementation(projects.feature.card)
     implementation(projects.feature.tlv)
     implementation(projects.feature.issuer)
+    implementation(projects.feature.tokens)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

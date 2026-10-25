@@ -10,6 +10,7 @@ import com.danyastry.nfcpay.feature.terminal.model.CardSource
 val CardSource.labelRes: Int
     get() = when (this) {
         CardSource.SIMULATED -> R.string.terminal_source_simulated
+        CardSource.WALLET -> R.string.terminal_source_wallet
         CardSource.NFC -> R.string.terminal_source_nfc
     }
 

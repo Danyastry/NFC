@@ -5,6 +5,7 @@ import com.danyastry.nfcpay.feature.card.CardFeature
 import com.danyastry.nfcpay.feature.issuer.IssuerFeature
 import com.danyastry.nfcpay.feature.terminal.TerminalFeature
 import com.danyastry.nfcpay.feature.tlv.TlvFeature
+import com.danyastry.nfcpay.feature.tokens.TokensFeature
 
 object FeatureRegistry {
     val features: List<FeatureEntry> = listOf(
@@ -12,5 +13,6 @@ object FeatureRegistry {
         CardFeature,
         TlvFeature,
         IssuerFeature,
+        TokensFeature,
     )
 }
