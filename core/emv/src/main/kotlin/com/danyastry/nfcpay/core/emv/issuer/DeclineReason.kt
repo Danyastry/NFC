@@ -12,5 +12,8 @@ enum class DeclineReason(val responseCode: ResponseCode, val description: String
     REPLAYED_COUNTER(ResponseCode.SECURITY_VIOLATION, "Transaction counter already used: replayed cryptogram"),
     CARD_DECLINED(ResponseCode.DO_NOT_HONOR, "The card itself declined with an AAC"),
     EXPIRED_CARD(ResponseCode.EXPIRED_CARD, "Card expired"),
+    INCORRECT_PIN(ResponseCode.INCORRECT_PIN, "The PIN does not match"),
+    PIN_TRIES_EXCEEDED(ResponseCode.PIN_TRIES_EXCEEDED, "PIN is blocked after too many wrong tries"),
+    UNREADABLE_PIN(ResponseCode.DO_NOT_HONOR, "The PIN block could not be decrypted"),
     INSUFFICIENT_FUNDS(ResponseCode.INSUFFICIENT_FUNDS, "Amount is above the available balance"),
 }

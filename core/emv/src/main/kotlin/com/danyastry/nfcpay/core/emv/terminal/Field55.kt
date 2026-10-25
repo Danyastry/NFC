@@ -22,6 +22,7 @@ object Field55 {
         EmvTags.TERMINAL_COUNTRY,
         EmvTags.AMOUNT_OTHER,
         EmvTags.TERMINAL_CAPABILITIES,
+        EmvTags.CVM_RESULTS,
         EmvTags.TERMINAL_TYPE,
         EmvTags.DF_NAME,
         EmvTags.PAN_SEQUENCE_NUMBER,

@@ -16,6 +16,7 @@ class IssuerAuthorizer(
             panSequenceNumber = request.card.panSequenceNumber ?: 0,
             field55 = request.field55,
             date = request.date,
+            onlinePin = request.pin,
         )
         val response = host.authorize(authorization)
         onResponse(authorization, response)

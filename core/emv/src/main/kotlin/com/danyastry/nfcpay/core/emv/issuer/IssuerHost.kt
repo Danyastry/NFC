@@ -8,6 +8,8 @@ import com.danyastry.nfcpay.core.emv.crypto.Arpc
 import com.danyastry.nfcpay.core.emv.crypto.IccKeyDerivation
 import com.danyastry.nfcpay.core.emv.crypto.KeyCheckValue
 import com.danyastry.nfcpay.core.emv.dol.Dol
+import com.danyastry.nfcpay.core.emv.hsm.PinCheck
+import com.danyastry.nfcpay.core.emv.hsm.PinService
 import com.danyastry.nfcpay.core.emv.dol.DolEntry
 import com.danyastry.nfcpay.core.emv.mask.SensitiveData
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
@@ -27,6 +29,7 @@ class IssuerHost(
     accounts: List<IssuerAccount>,
     private val cdol1: List<DolEntry> = CardFiles.CDOL1,
     private val tokens: TokenService? = null,
+    private val pins: PinService? = null,
 ) {
     private val accounts = accounts.associateBy { key(it.pan, it.panSequenceNumber) }.toMutableMap()
     private val tokenCounters = mutableMapOf<String, Int>()
@@ -40,6 +43,7 @@ class IssuerHost(
         this.accounts.clear()
         tokenCounters.clear()
         keyUses.clear()
+        accounts.forEach { pins?.unblock(it.pan) }
         accounts.forEach { this.accounts[key(it.pan, it.panSequenceNumber)] = it }
     }
 
@@ -137,7 +141,7 @@ class IssuerHost(
             }
             accounts[key(account.pan, account.panSequenceNumber)] = counted
 
-            val reason = businessDecision(account, values, requested)
+            val reason = cardDecision(account, values) ?: checkPin() ?: fundsDecision(account, requested)
             val responseCode = reason?.responseCode ?: ResponseCode.APPROVED
             if (reason == null) {
                 accounts[key(account.pan, account.panSequenceNumber)] = counted.copy(balance = account.balance - requested)
@@ -159,13 +163,27 @@ class IssuerHost(
             )
         }
 
-        private fun businessDecision(account: IssuerAccount, values: Map<Tag, ByteArray>, requested: Long): DeclineReason? {
+        private fun cardDecision(account: IssuerAccount, values: Map<Tag, ByteArray>): DeclineReason? {
             val cid = values.getValue(EmvTags.CRYPTOGRAM_INFORMATION_DATA).firstOrNull()?.toInt()?.and(0xFF) ?: 0
             return when {
                 CryptogramType.fromBits(cid) == CryptogramType.AAC -> DeclineReason.CARD_DECLINED
                 account.expiry.isBefore(YearMonth.from(request.date)) -> DeclineReason.EXPIRED_CARD
-                requested > account.balance -> DeclineReason.INSUFFICIENT_FUNDS
                 else -> null
+            }
+        }
+
+        private fun fundsDecision(account: IssuerAccount, requested: Long): DeclineReason? =
+            if (requested > account.balance) DeclineReason.INSUFFICIENT_FUNDS else null
+
+        private fun checkPin(): DeclineReason? {
+            val encrypted = request.onlinePin ?: return null
+            val verdict = pins?.verify(request.pan, encrypted) ?: return DeclineReason.UNREADABLE_PIN
+            val detail = "KSN ${encrypted.ksn} · ${verdict.check?.description ?: "PIN blocked"} · tries left ${verdict.triesLeft}"
+            return when {
+                verdict.isVerified -> null.also { step("Online PIN", detail, passed = true) }
+                verdict.check == PinCheck.WRONG_PIN && !verdict.blocked -> DeclineReason.INCORRECT_PIN.also { step("Online PIN", detail, passed = false) }
+                verdict.blocked -> DeclineReason.PIN_TRIES_EXCEEDED.also { step("Online PIN", detail, passed = false) }
+                else -> DeclineReason.UNREADABLE_PIN.also { step("Online PIN", detail, passed = false) }
             }
         }
 

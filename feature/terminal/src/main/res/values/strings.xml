@@ -34,7 +34,7 @@
     <string name="terminal_from_gpo">The card returned the cryptogram in its processing options, so no GENERATE AC was needed.</string>
     <string name="terminal_tvr">Terminal verification results: %1$s</string>
     <string name="terminal_tvr_clean">no flags</string>
-    <string name="terminal_cvm_required">Above the contactless limit: the cardholder has to verify (PIN or phone unlock)</string>
+    <string name="terminal_cvm_required">Above the contactless limit: the cardholder has to verify</string>
     <string name="terminal_field55">ISO 8583 field 55</string>
     <string name="terminal_failed">Transaction failed: %1$s</string>
     <string name="terminal_failed_sw">Card answered %1$s</string>
@@ -51,4 +51,10 @@
     <string name="terminal_error_pan">the card sent no account number</string>
     <string name="terminal_error_malformed">the card sent bytes that are not valid TLV</string>
     <string name="terminal_error_card_lost">the card left the field</string>
+    <string name="terminal_error_pin_cancelled">PIN entry was cancelled</string>
+    <string name="terminal_pin_title">Enter PIN</string>
+    <string name="terminal_pin_subtitle">%1$s USD · card %2$s</string>
+    <string name="terminal_pin_hint">Demo card PIN: 1234. The PIN is encrypted on this PIN pad with AES DUKPT; only the issuer HSM can read it.</string>
+    <string name="terminal_pin_ok">OK</string>
+    <string name="terminal_pin_clear">Clear</string>
 </resources>

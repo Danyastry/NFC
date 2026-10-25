@@ -39,6 +39,7 @@ import com.danyastry.nfcpay.core.nfc.hce.SharedCard
 import com.danyastry.nfcpay.core.nfc.issuer.SharedIssuer
 import com.danyastry.nfcpay.core.nfc.radio.NfcAvailability
 import com.danyastry.nfcpay.core.nfc.reader.IsoDepTransport
+import com.danyastry.nfcpay.core.nfc.pin.SharedPin
 import com.danyastry.nfcpay.core.nfc.reader.ReaderModeEffect
 import com.danyastry.nfcpay.core.nfc.wallet.SharedWallet
 import com.danyastry.nfcpay.core.nfc.ui.ExchangeCard
@@ -61,6 +62,7 @@ fun TerminalRoute(modifier: Modifier = Modifier) {
                     simulatedCard = SharedCard.host.handler(ApduSource.SIMULATED),
                     authorizer = SharedIssuer.link.authorizer,
                     walletCard = SharedWallet.wallet::handler,
+                    encryptPin = SharedPin.device::encryptPin,
                 )
             }
         },
@@ -80,6 +82,8 @@ fun TerminalRoute(modifier: Modifier = Modifier) {
             onAmountChange = viewModel::onAmountChange,
             onTap = viewModel::onTap,
             onCancel = viewModel::onCancel,
+            onPinSubmit = viewModel::onPinSubmit,
+            onPinCancel = viewModel::onPinCancel,
         ),
         modifier = modifier,
     )
@@ -94,6 +98,7 @@ fun TerminalScreen(
     modifier: Modifier = Modifier,
 ) {
     val tap = state.lastTap
+    state.pinPrompt?.let { PinPadDialog(it, onSubmit = actions.onPinSubmit, onCancel = actions.onPinCancel) }
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),

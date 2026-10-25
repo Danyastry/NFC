@@ -28,6 +28,7 @@ class TerminalKernel(
     private val config: TerminalConfig = TerminalConfig(),
     private val random: Random = Random.Default,
     private val authorizer: OnlineAuthorizer? = null,
+    private val pinPad: PinPad? = null,
 ) {
 
     suspend fun run(transport: CardTransport, request: TransactionRequest): TransactionResult {
@@ -56,8 +57,16 @@ class TerminalKernel(
         val (aip, afl, gpoData) = parseProcessingOptions(gpo.data)
 
         val cardData = fci.flatten() + gpoData + readRecords(session, afl)
-        val tvr = riskManagement(cardData, request)
+        val cardholderVerificationRequired = request.amount > config.cvmLimit
+        val onlinePin = if (cardholderVerificationRequired && pinPad != null && authorizer != null) {
+            val pan = CardDataReader.pan(cardData) ?: throw KernelException(TerminalError.MISSING_PAN)
+            pinPad.capture(pan, request.amount) ?: throw KernelException(TerminalError.PIN_ENTRY_CANCELLED)
+        } else {
+            null
+        }
+        val tvr = riskManagement(cardData, request).let { if (onlinePin != null) it + TvrBit.ONLINE_PIN_ENTERED else it }
         terminalData[EmvTags.TVR] = tvr.encode()
+        terminalData[EmvTags.CVM_RESULTS] = if (onlinePin != null) ONLINE_PIN_CVM else NO_CVM
 
         val cryptogramData = if (gpoData.findTag(EmvTags.APPLICATION_CRYPTOGRAM) != null) {
             gpoData
@@ -90,13 +99,13 @@ class TerminalKernel(
         }
         val field55 = Field55.build(field55Values)
         val online = authorizer?.takeIf { cryptogram.type == CryptogramType.ARQC }?.let {
-            goOnline(session, it, OnlineRequest(card, field55, request.date), cardData, terminalData)
+            goOnline(session, it, OnlineRequest(card, field55, request.date, onlinePin), cardData, terminalData)
         }
         return TransactionOutcome.Completed(
             card = card,
             cryptogram = cryptogram,
             tvr = tvr,
-            cardholderVerificationRequired = request.amount > config.cvmLimit,
+            cardholderVerificationRequired = cardholderVerificationRequired,
             field55 = field55.toHex(),
             online = online,
         )
@@ -245,5 +254,7 @@ class TerminalKernel(
 
     private companion object {
         val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyMMdd")
+        val ONLINE_PIN_CVM: ByteArray = "420300".hexToBytes()
+        val NO_CVM: ByteArray = "3F0000".hexToBytes()
     }
 }

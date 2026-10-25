@@ -3,6 +3,7 @@ package com.danyastry.nfcpay.feature.terminal.ui
 import com.danyastry.nfcpay.core.emv.card.CryptogramType
 import com.danyastry.nfcpay.core.emv.card.DemoCards
 import com.danyastry.nfcpay.core.emv.card.VirtualCard
+import com.danyastry.nfcpay.core.emv.hsm.DemoHsm
 import com.danyastry.nfcpay.core.emv.issuer.DemoIssuer
 import com.danyastry.nfcpay.core.emv.issuer.IssuerAuthorizer
 import com.danyastry.nfcpay.core.emv.token.TokenService
@@ -97,6 +98,42 @@ class TerminalViewModelTest {
         assertThat(outcome.card.pan).isEqualTo(wallet.state.value!!.token.token)
         assertThat(outcome.online!!.isApproved).isTrue()
         assertThat(viewModel.state.value.lastTap!!.maskCardData).isFalse()
+    }
+
+    @Test
+    fun `asks for a PIN above the limit and sends it encrypted`() = runTest {
+        val issuer = DemoIssuer.create(pins = DemoHsm.pinService())
+        val device = DemoHsm.pinPadDevice()
+        val viewModel = TerminalViewModel(card, IssuerAuthorizer(issuer), encryptPin = device::encryptPin, today = { LocalDate.of(2026, 10, 25) })
+        viewModel.onAmountChange("60.00")
+
+        viewModel.onTap()
+        advanceUntilIdle()
+        val prompt = viewModel.state.value.pinPrompt!!
+        assertThat(prompt.amount).isEqualTo("60.00")
+        assertThat(prompt.maskedPan).isEqualTo("999900******7891")
+
+        viewModel.onPinSubmit(DemoHsm.CARD_PIN)
+        advanceUntilIdle()
+
+        val outcome = viewModel.state.value.lastTap!!.result.outcome as TransactionOutcome.Completed
+        assertThat(viewModel.state.value.pinPrompt).isNull()
+        assertThat(outcome.online!!.isApproved).isTrue()
+        assertThat(device.nextCounter).isEqualTo(2)
+    }
+
+    @Test
+    fun `cancelling the PIN pad fails the tap`() = runTest {
+        val viewModel = TerminalViewModel(card, IssuerAuthorizer(DemoIssuer.create(pins = DemoHsm.pinService())), encryptPin = DemoHsm.pinPadDevice()::encryptPin)
+        viewModel.onAmountChange("60.00")
+
+        viewModel.onTap()
+        advanceUntilIdle()
+        viewModel.onPinCancel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.lastTap!!.result.outcome).isEqualTo(TransactionOutcome.Failed(TerminalError.PIN_ENTRY_CANCELLED))
+        assertThat(viewModel.state.value.phase).isEqualTo(TerminalPhase.IDLE)
     }
 
     @Test

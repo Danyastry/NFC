@@ -7,4 +7,6 @@ data class TerminalActions(
     val onAmountChange: (String) -> Unit,
     val onTap: () -> Unit,
     val onCancel: () -> Unit,
+    val onPinSubmit: (String) -> Unit,
+    val onPinCancel: () -> Unit,
 )
