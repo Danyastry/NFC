@@ -41,8 +41,11 @@ object IsoPinBlock {
         return pin
     }
 
-    fun encipherFormat4(key: ByteArray, pin: String, pan: String, random: Random = Random.Default): ByteArray {
-        val pinField = format4PinField(pin, random)
+    fun encipherFormat4(key: ByteArray, pin: String, pan: String, random: Random = Random.Default): ByteArray =
+        encipherFormat4Field(key, format4PinField(pin, random), pan)
+
+    fun encipherFormat4Field(key: ByteArray, pinField: ByteArray, pan: String): ByteArray {
+        require(pinField.size == AES_NIBBLES / 2) { "Format 4 PIN fields are 16 bytes" }
         return Aes.encrypt(key, Aes.encrypt(key, pinField) xor format4PanField(pan))
     }
 
