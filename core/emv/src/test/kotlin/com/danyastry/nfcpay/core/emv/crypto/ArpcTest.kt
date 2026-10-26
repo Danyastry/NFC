@@ -8,7 +8,7 @@ import org.junit.Test
 
 class ArpcTest {
 
-    private val sessionKey = "4963483D5FA7CE6110DBC95B16A7C0A2".hexToBytes()
+    private val sessionKey = "4962493D5EA7CE6110DAC85B16A7C1A2".hexToBytes()
 
     @Test
     fun `method 1 encrypts the ARQC xored with the response code`() {

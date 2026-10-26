@@ -245,7 +245,7 @@ class VirtualCardTest {
         val tlvs = BerTlv.parse(ResponseApdu.parse(legacy.process(EmvCommands.generateAc(CryptogramType.ARQC, cdolData.hexToBytes()).encode())).data)
 
         assertThat(tlvs.valueOf(EmvTags.ISSUER_APPLICATION_DATA)!!.toHex()).isEqualTo("06010A03A00000")
-        val expected = RetailMac.compute(DemoCards.lab.masterKey, (cdolData + "1C80" + "0001" + "03A00000").hexToBytes())
+        val expected = RetailMac.computeZeroPadded(DemoCards.lab.masterKey, (cdolData + "1C80" + "0001" + "03A00000").hexToBytes())
         assertThat(tlvs.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(expected)
     }
 

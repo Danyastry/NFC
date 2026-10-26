@@ -119,7 +119,7 @@ class VirtualCard(
         val type = if (requested == CryptogramType.AAC) CryptogramType.AAC else CryptogramType.ARQC
         val key = keys.cryptogramKey()
         val cvr = CardCryptogram.cvr(type)
-        val cryptogram = CardCryptogram.compute(key, command.data, files.aip, atc, cvr)
+        val cryptogram = CardCryptogram.compute(key, command.data, files.aip, atc, cvr, keys.version)
         if (type == CryptogramType.ARQC) {
             firstAc = FirstAc(key, command.data, cryptogram)
             session = CardSession.AWAITING_ISSUER
@@ -142,7 +142,7 @@ class VirtualCard(
             responseCode.contentEquals(APPROVED_CODE)
         val type = if (approve) CryptogramType.TC else CryptogramType.AAC
         val cvr = CardCryptogram.secondCvr(type, authentication)
-        val cryptogram = CardCryptogram.compute(first.key, first.cdolData + command.data, files.aip, atc, cvr)
+        val cryptogram = CardCryptogram.compute(first.key, first.cdolData + command.data, files.aip, atc, cvr, keys.version)
         lastIssuerAuthentication = authentication
         firstAc = null
         session = CardSession.COMPLETED

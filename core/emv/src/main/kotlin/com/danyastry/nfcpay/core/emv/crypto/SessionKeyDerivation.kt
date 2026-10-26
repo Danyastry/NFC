@@ -9,8 +9,10 @@ object SessionKeyDerivation {
 
     fun commonSessionKey(cardMasterKey: ByteArray, atc: Int): ByteArray {
         require(atc in 0..0xFFFF) { "ATC is two bytes, got $atc" }
-        return TripleDes.encrypt(cardMasterKey, diversification(atc, LEFT_MARKER)) +
-            TripleDes.encrypt(cardMasterKey, diversification(atc, RIGHT_MARKER))
+        return DesParity.adjust(
+            TripleDes.encrypt(cardMasterKey, diversification(atc, LEFT_MARKER)) +
+                TripleDes.encrypt(cardMasterKey, diversification(atc, RIGHT_MARKER)),
+        )
     }
 
     internal fun diversification(atc: Int, marker: Int): ByteArray =

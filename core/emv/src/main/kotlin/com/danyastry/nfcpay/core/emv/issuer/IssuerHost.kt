@@ -120,7 +120,7 @@ class IssuerHost(
 
             val cvr = iad.copyOfRange(CardCryptogram.CVR_OFFSET, CardCryptogram.IAD_LENGTH)
             val data = Dol.build(cdol1) { values[it] }
-            val expected = CardCryptogram.compute(key, data, values.getValue(EmvTags.AIP), counter, cvr)
+            val expected = CardCryptogram.compute(key, data, values.getValue(EmvTags.AIP), counter, cvr, version)
             val received = values.getValue(EmvTags.APPLICATION_CRYPTOGRAM)
             if (!expected.contentEquals(received)) {
                 return decline(DeclineReason.CRYPTOGRAM_MISMATCH, "Expected ${expected.toHex()}, got ${received.toHex()}")

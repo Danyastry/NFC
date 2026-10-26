@@ -18,7 +18,7 @@ class SessionKeyDerivationTest {
 
     @Test
     fun `derives the EMV common session key`() {
-        assertThat(SessionKeyDerivation.commonSessionKey(cardKey, 1).toHex()).isEqualTo("4963483D5FA7CE6110DBC95B16A7C0A2")
+        assertThat(SessionKeyDerivation.commonSessionKey(cardKey, 1).toHex()).isEqualTo("4962493D5EA7CE6110DAC85B16A7C1A2")
     }
 
     @Test

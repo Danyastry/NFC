@@ -246,14 +246,36 @@ class TerminalKernel(
         val exchanges = mutableListOf<Exchange>()
 
         suspend fun exchange(label: String, command: CommandApdu): ResponseApdu {
+            var response = send(label, command)
+            if (response.sw ushr 8 == WRONG_LE) {
+                val le = expectedLength(response.sw)
+                response = send("$label · retry with Le %02X".format(le and 0xFF), CommandApdu(command.cla, command.ins, command.p1, command.p2, command.data, le))
+            }
+            var data = response.data
+            var fetches = 0
+            while (response.sw ushr 8 == MORE_DATA) {
+                if (++fetches > MAX_GET_RESPONSE) throw KernelException(TerminalError.MALFORMED_RESPONSE, response.sw)
+                response = send("GET RESPONSE", CommandApdu(0x00, GET_RESPONSE, 0x00, 0x00, le = expectedLength(response.sw)))
+                data += response.data
+            }
+            return ResponseApdu(data, response.sw)
+        }
+
+        private suspend fun send(label: String, command: CommandApdu): ResponseApdu {
             val response = ResponseApdu.parse(transport.transceive(command.encode()))
             exchanges += Exchange(label, command, response)
             return response
         }
+
+        private fun expectedLength(sw: Int): Int = (sw and 0xFF).let { if (it == 0) CommandApdu.MAX_SHORT_LE else it }
     }
 
-    private companion object {
+    internal companion object {
         val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyMMdd")
+        const val MORE_DATA = 0x61
+        const val WRONG_LE = 0x6C
+        const val GET_RESPONSE = 0xC0
+        const val MAX_GET_RESPONSE = 16
         val ONLINE_PIN_CVM: ByteArray = "420300".hexToBytes()
         val NO_CVM: ByteArray = "3F0000".hexToBytes()
     }
