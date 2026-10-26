@@ -7,5 +7,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.core.emv)
+    api(projects.core.emv)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }
