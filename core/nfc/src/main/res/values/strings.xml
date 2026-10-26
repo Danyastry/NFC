@@ -10,4 +10,6 @@
     <string name="nfc_exchange_command">Command</string>
     <string name="nfc_exchange_response">Response</string>
     <string name="nfc_exchange_hidden">Raw response hidden: it carries real card data</string>
+    <string name="nfc_tag_service_description">NFC Pay Lab virtual NDEF tag</string>
+    <string name="nfc_tag_aid_group">NFC Forum Type 4 tag</string>
 </resources>

@@ -8,6 +8,7 @@ android {
 
 dependencies {
     api(projects.core.emv)
+    api(projects.core.ndef)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.material3)

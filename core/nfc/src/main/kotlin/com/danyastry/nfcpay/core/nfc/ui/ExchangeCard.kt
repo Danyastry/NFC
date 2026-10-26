@@ -26,9 +26,11 @@ import com.danyastry.nfcpay.core.emv.util.toHex
 import com.danyastry.nfcpay.core.nfc.R
 
 @Composable
-fun ExchangeCard(exchange: Exchange, mask: Boolean, modifier: Modifier = Modifier) {
+fun ExchangeCard(exchange: Exchange, mask: Boolean, modifier: Modifier = Modifier, decodeTlv: Boolean = true) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val tlvs = remember(exchange) { runCatching { BerTlv.parse(exchange.response.data) }.getOrDefault(emptyList()) }
+    val tlvs = remember(exchange, decodeTlv) {
+        if (decodeTlv) runCatching { BerTlv.parse(exchange.response.data) }.getOrDefault(emptyList()) else emptyList()
+    }
     val hideRaw = mask && SensitiveData.containsSensitive(tlvs)
     val status = exchange.response.sw
     OutlinedCard(modifier = modifier.fillMaxWidth().clickable { expanded = !expanded }) {
