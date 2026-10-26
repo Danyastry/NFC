@@ -10,6 +10,7 @@ import com.danyastry.nfcpay.core.emv.terminal.TerminalKernel
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.emv.terminal.TransactionRequest
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
+import com.danyastry.nfcpay.core.nfc.tag.TagEmulationService
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -28,7 +29,11 @@ class PaymentCardServiceTest {
             PackageManager.GET_META_DATA,
         )
 
-        val service = services.single().serviceInfo
+        assertThat(services.map { it.serviceInfo.name }).containsExactly(
+            PaymentCardService::class.java.name,
+            TagEmulationService::class.java.name,
+        )
+        val service = services.first { it.serviceInfo.name == PaymentCardService::class.java.name }.serviceInfo
         assertThat(service.name).isEqualTo(PaymentCardService::class.java.name)
         assertThat(service.permission).isEqualTo(android.Manifest.permission.BIND_NFC_SERVICE)
         assertThat(service.metaData.getInt(HostApduService.SERVICE_META_DATA)).isNotEqualTo(0)

@@ -1,0 +1,20 @@
+<resources>
+    <string name="tags_source_virtual">Virtual tag</string>
+    <string name="tags_source_nfc">Real tag</string>
+    <string name="tags_kind_text">Text</string>
+    <string name="tags_kind_link">Link</string>
+    <string name="tags_input_text">Text to store</string>
+    <string name="tags_input_link">Link, such as example.com</string>
+    <string name="tags_write">Write</string>
+    <string name="tags_read">Read</string>
+    <string name="tags_virtual_hint">The virtual tag is an NFC Forum Type 4 tag inside the app. On a phone with NFC, other phones can read it through host card emulation.</string>
+    <string name="tags_waiting">Hold an NFC tag to the back of the phone</string>
+    <string name="tags_cancel">Cancel</string>
+    <string name="tags_read_real">Read a tag</string>
+    <string name="tags_nfc_needed">Reading real tags needs NFC.</string>
+    <string name="tags_failed">Failed: %1$s</string>
+    <string name="tags_written">Written to the tag</string>
+    <string name="tags_read_done">Records read: %1$d</string>
+    <string name="tags_message_bytes">NDEF message</string>
+    <string name="tags_exchanges">APDU exchanges: %1$d</string>
+</resources>

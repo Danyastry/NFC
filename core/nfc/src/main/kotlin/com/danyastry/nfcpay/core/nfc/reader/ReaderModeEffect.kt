@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.nfc.NfcAdapter
+import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Bundle
 import androidx.compose.runtime.Composable
@@ -14,14 +15,20 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 
 @Composable
 fun ReaderModeEffect(enabled: Boolean, onCard: (IsoDep) -> Unit) {
-    val context = LocalContext.current
     val currentOnCard by rememberUpdatedState(onCard)
-    LifecycleResumeEffect(enabled, context) {
+    TagReaderEffect(enabled, PAYMENT_FLAGS) { tag -> IsoDep.get(tag)?.let { currentOnCard(it) } }
+}
+
+@Composable
+fun TagReaderEffect(enabled: Boolean, flags: Int = TAG_FLAGS, onTag: (Tag) -> Unit) {
+    val context = LocalContext.current
+    val currentOnTag by rememberUpdatedState(onTag)
+    LifecycleResumeEffect(enabled, flags, context) {
         val activity = context.findActivity()
         val adapter = NfcAdapter.getDefaultAdapter(context)
         if (enabled && activity != null && adapter != null) {
             val extras = Bundle().apply { putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, PRESENCE_CHECK_MILLIS) }
-            adapter.enableReaderMode(activity, { tag -> IsoDep.get(tag)?.let { currentOnCard(it) } }, READER_FLAGS, extras)
+            adapter.enableReaderMode(activity, { tag -> currentOnTag(tag) }, flags, extras)
         }
         onPauseOrDispose {
             if (enabled && activity != null && adapter != null) adapter.disableReaderMode(activity)
@@ -36,4 +43,6 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 }
 
 private const val PRESENCE_CHECK_MILLIS = 250
-private const val READER_FLAGS = NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK
+private const val PAYMENT_FLAGS = NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK
+private const val TAG_FLAGS = NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or
+    NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V
