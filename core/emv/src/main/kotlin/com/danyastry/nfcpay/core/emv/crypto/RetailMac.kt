@@ -11,6 +11,13 @@ object RetailMac {
 
     fun compute(key: ByteArray, data: ByteArray): ByteArray = computeAlgorithm3(key, padMethod2(data))
 
+    fun computeZeroPadded(key: ByteArray, data: ByteArray): ByteArray = computeAlgorithm3(key, padMethod1(data))
+
+    fun padMethod1(data: ByteArray): ByteArray {
+        val remainder = data.size % BLOCK_SIZE
+        return if (data.isNotEmpty() && remainder == 0) data else data + ByteArray(BLOCK_SIZE - remainder)
+    }
+
     fun padMethod2(data: ByteArray): ByteArray {
         val padded = data + byteArrayOf(0x80.toByte())
         val remainder = padded.size % BLOCK_SIZE

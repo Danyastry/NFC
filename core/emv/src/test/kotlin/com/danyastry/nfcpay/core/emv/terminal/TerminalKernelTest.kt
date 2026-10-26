@@ -86,6 +86,7 @@ class TerminalKernelTest {
             aip = field55.valueOf(EmvTags.AIP)!!,
             atc = atc,
             cvr = CardCryptogram.cvr(CryptogramType.ARQC),
+            version = CryptogramVersion.SESSION_KEY,
         )
         assertThat(field55.valueOf(EmvTags.APPLICATION_CRYPTOGRAM)).isEqualTo(recomputed)
         assertThat(field55.valueOf(EmvTags.TRANSACTION_DATE)!!.toHex()).isEqualTo("261023")

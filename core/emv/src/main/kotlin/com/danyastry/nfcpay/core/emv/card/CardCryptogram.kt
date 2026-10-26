@@ -32,6 +32,11 @@ object CardCryptogram {
         CryptogramVersion.LIMITED_USE_KEY -> cardMasterKey
     }
 
-    fun compute(key: ByteArray, cdolData: ByteArray, aip: ByteArray, atc: Int, cvr: ByteArray): ByteArray =
-        RetailMac.compute(key, cdolData + aip + atc.toBytes(2) + cvr)
+    fun compute(key: ByteArray, cdolData: ByteArray, aip: ByteArray, atc: Int, cvr: ByteArray, version: CryptogramVersion): ByteArray {
+        val data = cdolData + aip + atc.toBytes(2) + cvr
+        return when (version) {
+            CryptogramVersion.CARD_KEY -> RetailMac.computeZeroPadded(key, data)
+            CryptogramVersion.SESSION_KEY, CryptogramVersion.LIMITED_USE_KEY -> RetailMac.compute(key, data)
+        }
+    }
 }
