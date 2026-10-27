@@ -12,8 +12,8 @@ import org.junit.Test
 class RecordTest {
 
     @Test
-    fun `reads text in any language and in UTF-16`() {
-        val utf8 = TextRecord("Привіт", "uk")
+    fun `reads non-ASCII text and UTF-16`() {
+        val utf8 = TextRecord("Price \u00A3 5 and \u20AC 6", "en")
         assertThat(TextRecord.from(utf8.toRecord())).isEqualTo(utf8)
 
         val utf16 = NdefRecord(Tnf.WELL_KNOWN, "T".toByteArray(), byteArrayOf(0x82.toByte()) + "en".toByteArray() + "Hi".toByteArray(Charsets.UTF_16))

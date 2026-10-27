@@ -15,4 +15,6 @@
     <string name="issuer_replayed">Replay</string>
     <string name="issuer_amount">%1$s USD</string>
     <string name="issuer_atc">ATC %1$d</string>
+    <string name="issuer_step_passed">Passed</string>
+    <string name="issuer_step_failed">Failed</string>
 </resources>

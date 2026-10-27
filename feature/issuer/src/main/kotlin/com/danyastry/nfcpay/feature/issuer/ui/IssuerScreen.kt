@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -122,9 +126,10 @@ private fun AuthorizationCard(view: AuthorizationView) {
 @Composable
 private fun StepRow(step: VerificationStep) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = if (step.passed) "✓" else "✗",
-            color = if (step.passed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+        Icon(
+            imageVector = if (step.passed) Icons.Default.Check else Icons.Default.Close,
+            contentDescription = stringResource(if (step.passed) R.string.issuer_step_passed else R.string.issuer_step_failed),
+            tint = if (step.passed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
         )
         Column {
             Text(step.title, style = MaterialTheme.typography.labelLarge)
