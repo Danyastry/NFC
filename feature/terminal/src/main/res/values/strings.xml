@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="terminal_source_simulated">Virtual card</string>
     <string name="terminal_source_wallet">Phone wallet</string>
     <string name="terminal_source_nfc">Real card</string>
@@ -10,13 +10,13 @@
     <string name="terminal_tap">Tap card</string>
     <string name="terminal_wait">Wait for a card</string>
     <string name="terminal_waiting">Hold a contactless card to the back of the phone</string>
-    <string name="terminal_reading">Reading the card…</string>
+    <string name="terminal_reading" tools:ignore="TypographyEllipsis">Reading the card...</string>
     <string name="terminal_cancel">Cancel</string>
     <string name="terminal_nfc_needed">Reading real cards needs NFC. The virtual card works on any device.</string>
     <string name="terminal_no_charge">Nothing is charged. The virtual card and the wallet go online to a demo issuer inside the app; a real card stops at the ARQC and nothing leaves this phone.</string>
     <string name="terminal_approved">Approved</string>
     <string name="terminal_declined">Declined</string>
-    <string name="terminal_issuer_answer">Issuer: %1$s · %2$s</string>
+    <string name="terminal_issuer_answer">Issuer: %1$s - %2$s</string>
     <string name="terminal_final_cryptogram">Final cryptogram: %1$s %2$s</string>
     <string name="terminal_card_overruled">The issuer said yes, but the card could not verify the ARPC and declined</string>
     <string name="terminal_unable_online">Unable to go online</string>
@@ -53,7 +53,7 @@
     <string name="terminal_error_card_lost">the card left the field</string>
     <string name="terminal_error_pin_cancelled">PIN entry was cancelled</string>
     <string name="terminal_pin_title">Enter PIN</string>
-    <string name="terminal_pin_subtitle">%1$s USD · card %2$s</string>
+    <string name="terminal_pin_subtitle">%1$s USD - card %2$s</string>
     <string name="terminal_pin_hint">Demo card PIN: 1234. The PIN is encrypted on this PIN pad with AES DUKPT; only the issuer HSM can read it.</string>
     <string name="terminal_pin_ok">OK</string>
     <string name="terminal_pin_clear">Clear</string>

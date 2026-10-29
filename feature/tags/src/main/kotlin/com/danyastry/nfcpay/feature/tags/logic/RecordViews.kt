@@ -13,9 +13,9 @@ object RecordViews {
         val text = runCatching { TextRecord.from(record) }.getOrNull()
         val uri = runCatching { UriRecord.from(record) }.getOrNull()
         when {
-            text != null -> RecordView("Text", text.text, "language ${text.language} · ${record.payload.size} bytes")
-            uri != null -> RecordView("Link", uri.uri, "prefix code %02X · ${record.payload.size} bytes".format(record.payload[0].toInt() and 0xFF))
-            else -> RecordView(record.tnf.label, record.typeName.ifEmpty { "(no type)" }, "${record.payload.size} bytes · ${record.payload.toHex().take(32)}")
+            text != null -> RecordView("Text", text.text, "language ${text.language} - ${record.payload.size} bytes")
+            uri != null -> RecordView("Link", uri.uri, "prefix code %02X - ${record.payload.size} bytes".format(record.payload[0].toInt() and 0xFF))
+            else -> RecordView(record.tnf.label, record.typeName.ifEmpty { "(no type)" }, "${record.payload.size} bytes - ${record.payload.toHex().take(32)}")
         }
     }
 

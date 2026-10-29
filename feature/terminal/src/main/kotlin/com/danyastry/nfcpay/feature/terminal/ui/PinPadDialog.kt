@@ -40,7 +40,7 @@ fun PinPadDialog(prompt: PinPrompt, onSubmit: (String) -> Unit, onCancel: () -> 
                 Text(stringResource(R.string.terminal_pin_title), style = MaterialTheme.typography.titleLarge)
                 Text(stringResource(R.string.terminal_pin_subtitle, prompt.amount, prompt.maskedPan), style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    text = "●".repeat(digits.length).ifEmpty { "–" },
+                    text = "*".repeat(digits.length).ifEmpty { "-" },
                     style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.padding(vertical = 4.dp),
                 )

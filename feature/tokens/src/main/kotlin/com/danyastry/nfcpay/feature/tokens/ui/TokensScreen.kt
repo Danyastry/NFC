@@ -136,6 +136,6 @@ private fun Lifecycle(wallet: WalletView, actions: TokensActions) {
 private fun VaultRow(entry: VaultEntry) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(entry.token, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-        Text("${entry.status} · ${entry.domain}", style = MaterialTheme.typography.bodySmall)
+        Text("${entry.status} - ${entry.domain}", style = MaterialTheme.typography.bodySmall)
     }
 }

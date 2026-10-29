@@ -100,7 +100,7 @@ class OnlinePinTest {
             .run(LoopbackTransport(card), TransactionRequest(amount = 60_00, date = date))
 
         assertThat(result.outcome).isEqualTo(TransactionOutcome.Failed(TerminalError.PIN_ENTRY_CANCELLED))
-        assertThat(result.exchanges.map { it.label }).doesNotContain("GENERATE AC · ARQC")
+        assertThat(result.exchanges.map { it.label }).doesNotContain("GENERATE AC - ARQC")
     }
 
     private suspend fun tap(amount: Long): TransactionOutcome =

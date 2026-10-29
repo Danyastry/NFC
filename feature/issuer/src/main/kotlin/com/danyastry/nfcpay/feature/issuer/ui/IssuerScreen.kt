@@ -117,7 +117,7 @@ private fun AuthorizationCard(view: AuthorizationView) {
                 view.amount?.let { stringResource(R.string.issuer_amount, it) },
                 view.atc?.let { stringResource(R.string.issuer_atc, it) },
             )
-            if (details.isNotEmpty()) Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+            if (details.isNotEmpty()) Text(details.joinToString(" - "), style = MaterialTheme.typography.bodySmall)
             view.steps.forEach { StepRow(it) }
         }
     }

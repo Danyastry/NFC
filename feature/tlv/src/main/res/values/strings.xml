@@ -4,5 +4,5 @@
     <string name="tlv_clear">Clear</string>
     <string name="tlv_hint">Paste a card response, a record or a field 55. Spaces and line breaks are ignored.</string>
     <string name="tlv_invalid">Not valid TLV: %1$s</string>
-    <string name="tlv_summary">Bytes: %1$d · top-level objects: %2$d</string>
+    <string name="tlv_summary">Bytes: %1$d - top-level objects: %2$d</string>
 </resources>

@@ -27,7 +27,7 @@ class OnlineFlowTest {
     fun `an approved tap ends with a TC after the card checks the ARPC`() = runTest {
         val result = run(amount = 12_50, authorizer = IssuerAuthorizer(issuer) { _, response -> responses += response })
 
-        assertThat(result.exchanges.map { it.label }.takeLast(2)).containsExactly("GENERATE AC · ARQC", "GENERATE AC · TC").inOrder()
+        assertThat(result.exchanges.map { it.label }.takeLast(2)).containsExactly("GENERATE AC - ARQC", "GENERATE AC - TC").inOrder()
         val online = (result.outcome as TransactionOutcome.Completed).online!!
         assertThat(online.responseCode).isEqualTo("00")
         assertThat(online.reachedIssuer).isTrue()

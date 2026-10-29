@@ -44,9 +44,9 @@ class TerminalKernelTest {
             "SELECT PPSE",
             "SELECT F04E464350415901",
             "GET PROCESSING OPTIONS",
-            "READ RECORD · SFI 1 · record 1",
-            "READ RECORD · SFI 1 · record 2",
-            "GENERATE AC · ARQC",
+            "READ RECORD - SFI 1 - record 1",
+            "READ RECORD - SFI 1 - record 2",
+            "GENERATE AC - ARQC",
         ).inOrder()
         assertThat(result.exchanges.all { it.response.isSuccess }).isTrue()
         val outcome = result.outcome as TransactionOutcome.Completed
@@ -199,7 +199,7 @@ class TerminalKernelTest {
 
         val result = kernel.run(card, TransactionRequest(amount = 500, date = date))
 
-        assertThat(result.exchanges.map { it.label }).doesNotContain("GENERATE AC · ARQC")
+        assertThat(result.exchanges.map { it.label }).doesNotContain("GENERATE AC - ARQC")
         val outcome = result.outcome as TransactionOutcome.Completed
         assertThat(outcome.cryptogram.fromProcessingOptions).isTrue()
         assertThat(outcome.cryptogram.value).isEqualTo("8877665544332211")

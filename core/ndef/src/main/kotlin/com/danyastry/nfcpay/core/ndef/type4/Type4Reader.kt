@@ -35,12 +35,12 @@ class Type4Reader {
         val capabilities = open()
         if (!capabilities.isWritable) throw TagException(TagError.READ_ONLY)
         if (bytes.size > capabilities.maxMessageSize) throw TagException(TagError.TOO_LARGE)
-        updateBinary(0, 0.toBytes(2), "UPDATE BINARY · NLEN 0000")
+        updateBinary(0, 0.toBytes(2), "UPDATE BINARY - NLEN 0000")
         bytes.toList().chunked(capabilities.maxWriteSize).forEachIndexed { index, chunk ->
             val offset = Type4Files.NLEN_SIZE + index * capabilities.maxWriteSize
-            updateBinary(offset, chunk.toByteArray(), "UPDATE BINARY · offset $offset · ${chunk.size} bytes")
+            updateBinary(offset, chunk.toByteArray(), "UPDATE BINARY - offset $offset - ${chunk.size} bytes")
         }
-        updateBinary(0, bytes.size.toBytes(2), "UPDATE BINARY · NLEN ${bytes.size.toBytes(2).toHex()}")
+        updateBinary(0, bytes.size.toBytes(2), "UPDATE BINARY - NLEN ${bytes.size.toBytes(2).toHex()}")
         capabilities to message
     }
 
@@ -61,7 +61,7 @@ class Type4Reader {
             expect("SELECT NDEF application", EmvCommands.select(Type4Files.NDEF_APPLICATION), TagError.NOT_AN_NDEF_TAG)
             expect("SELECT capability container", selectFile(Type4Files.CAPABILITY_CONTAINER), TagError.NO_CAPABILITY_CONTAINER)
             val ccBytes = expect(
-                "READ BINARY · capability container",
+                "READ BINARY - capability container",
                 CommandApdu(0x00, Type4Files.INS_READ_BINARY, 0x00, 0x00, le = CapabilityContainer.LENGTH),
                 TagError.NO_CAPABILITY_CONTAINER,
             )
@@ -81,7 +81,7 @@ class Type4Reader {
                 val offset = start + data.size
                 val chunk = minOf(cc.maxReadSize, length - data.size, CommandApdu.MAX_SHORT_LE)
                 val bytes = expect(
-                    "READ BINARY · offset $offset · $chunk bytes",
+                    "READ BINARY - offset $offset - $chunk bytes",
                     CommandApdu(0x00, Type4Files.INS_READ_BINARY, offset ushr 8, offset and 0xFF, le = chunk),
                     TagError.READ_FAILED,
                 )

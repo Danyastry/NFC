@@ -73,7 +73,7 @@ class TerminalKernel(
         } else {
             val cdol1 = cardData.valueOf(EmvTags.CDOL1)?.let(Dol::parse) ?: throw KernelException(TerminalError.MISSING_CDOL1)
             val command = EmvCommands.generateAc(CryptogramType.ARQC, Dol.build(cdol1, terminalData::get))
-            val response = session.exchange("GENERATE AC · ARQC", command)
+            val response = session.exchange("GENERATE AC - ARQC", command)
             if (!response.isSuccess) throw KernelException(TerminalError.GENERATE_AC_FAILED, response.sw)
             parseGenerateAc(response.data)
         }
@@ -129,7 +129,7 @@ class TerminalKernel(
         terminalData[EmvTags.AUTHORISATION_RESPONSE_CODE] = responseCode.toByteArray(Charsets.US_ASCII)
         response?.issuerAuthenticationData?.let { terminalData[EmvTags.ISSUER_AUTHENTICATION_DATA] = it }
         val requested = if (response?.isApproved == true) CryptogramType.TC else CryptogramType.AAC
-        val reply = session.exchange("GENERATE AC · ${requested.label}", EmvCommands.generateAc(requested, Dol.build(cdol2, terminalData::get)))
+        val reply = session.exchange("GENERATE AC - ${requested.label}", EmvCommands.generateAc(requested, Dol.build(cdol2, terminalData::get)))
         if (!reply.isSuccess) throw KernelException(TerminalError.GENERATE_AC_FAILED, reply.sw)
         val final = cryptogram(parseGenerateAc(reply.data), fromProcessingOptions = false)
         return OnlineResult(responseCode, reachedIssuer = response != null, finalCryptogram = final)
@@ -183,7 +183,7 @@ class TerminalKernel(
         if (afl.isEmpty()) return emptyList()
         return AflEntry.parse(afl).flatMap { entry ->
             entry.records.flatMap { number ->
-                val response = session.exchange("READ RECORD · SFI ${entry.sfi} · record $number", EmvCommands.readRecord(entry.sfi, number))
+                val response = session.exchange("READ RECORD - SFI ${entry.sfi} - record $number", EmvCommands.readRecord(entry.sfi, number))
                 if (!response.isSuccess) throw KernelException(TerminalError.READ_RECORD_FAILED, response.sw)
                 BerTlv.parse(response.data).flatten()
             }
@@ -249,7 +249,7 @@ class TerminalKernel(
             var response = send(label, command)
             if (response.sw ushr 8 == WRONG_LE) {
                 val le = expectedLength(response.sw)
-                response = send("$label · retry with Le %02X".format(le and 0xFF), CommandApdu(command.cla, command.ins, command.p1, command.p2, command.data, le))
+                response = send("$label - retry with Le %02X".format(le and 0xFF), CommandApdu(command.cla, command.ins, command.p1, command.p2, command.data, le))
             }
             var data = response.data
             var fetches = 0
