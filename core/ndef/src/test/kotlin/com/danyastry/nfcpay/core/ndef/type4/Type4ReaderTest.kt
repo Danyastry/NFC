@@ -29,10 +29,10 @@ class Type4ReaderTest {
         assertThat(session.exchanges.map { it.label }).containsExactly(
             "SELECT NDEF application",
             "SELECT capability container",
-            "READ BINARY · capability container",
+            "READ BINARY - capability container",
             "SELECT NDEF file E104",
-            "READ BINARY · offset 0 · 2 bytes",
-            "READ BINARY · offset 2 · ${hello.encode().size} bytes",
+            "READ BINARY - offset 0 - 2 bytes",
+            "READ BINARY - offset 2 - ${hello.encode().size} bytes",
         ).inOrder()
     }
 
@@ -45,8 +45,8 @@ class Type4ReaderTest {
 
         assertThat(session.isSuccess).isTrue()
         val labels = session.exchanges.map { it.label }
-        assertThat(labels[4]).isEqualTo("UPDATE BINARY · NLEN 0000")
-        assertThat(labels.last()).startsWith("UPDATE BINARY · NLEN 00")
+        assertThat(labels[4]).isEqualTo("UPDATE BINARY - NLEN 0000")
+        assertThat(labels.last()).startsWith("UPDATE BINARY - NLEN 00")
         assertThat(labels.count { it.contains("offset") }).isEqualTo((long.encode().size + 15) / 16)
         assertThat(tag.message).isEqualTo(long)
     }
@@ -59,7 +59,7 @@ class Type4ReaderTest {
         val session = reader.read(LoopbackTransport(tag))
 
         assertThat(session.message).isEqualTo(long)
-        assertThat(session.exchanges.count { it.label.startsWith("READ BINARY · offset") && it.label != "READ BINARY · offset 0 · 2 bytes" })
+        assertThat(session.exchanges.count { it.label.startsWith("READ BINARY - offset") && it.label != "READ BINARY - offset 0 - 2 bytes" })
             .isEqualTo((long.encode().size + 0x1F) / 0x20)
     }
 

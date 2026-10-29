@@ -41,7 +41,7 @@ class CardViewModelTest {
 
         val state = viewModel.state.value
         assertThat(state.atc).isEqualTo(1)
-        assertThat(state.log.map { it.label }.first()).isEqualTo("GENERATE AC · ARQC")
+        assertThat(state.log.map { it.label }.first()).isEqualTo("GENERATE AC - ARQC")
         assertThat(state.log.map { it.label }.last()).isEqualTo("SELECT PPSE")
     }
 

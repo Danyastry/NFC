@@ -76,13 +76,13 @@ class IssuerHost(
             if (token != null) {
                 step(
                     "Token",
-                    "${SensitiveData.maskPan(token.token)} → ${SensitiveData.maskPan(token.pan)} · PAR ${token.paymentAccountReference}",
+                    "${SensitiveData.maskPan(token.token)} -> ${SensitiveData.maskPan(token.pan)} - PAR ${token.paymentAccountReference}",
                     passed = true,
                 )
             }
             val account = (if (token != null) account(token.pan, token.panSequenceNumber) else account(request.pan, request.panSequenceNumber))
                 ?: return decline(DeclineReason.UNKNOWN_ACCOUNT, SensitiveData.maskPan(request.pan))
-            step("Account", "${SensitiveData.maskPan(account.pan)} · sequence ${account.panSequenceNumber}", passed = true)
+            step("Account", "${SensitiveData.maskPan(account.pan)} - sequence ${account.panSequenceNumber}", passed = true)
 
             val iad = values.getValue(EmvTags.ISSUER_APPLICATION_DATA)
             val version = iad.takeIf { it.size >= CardCryptogram.IAD_LENGTH }?.let { CryptogramVersion.of(it[CardCryptogram.CVN_OFFSET].toInt() and 0xFF) }
@@ -106,15 +106,15 @@ class IssuerHost(
                 keyUse = useKey to used + 1
                 step(
                     "Limited-use key",
-                    "${version.label} · index $index · tap ${used + 1} of ${service.usesPerKey} · KCV ${KeyCheckValue.of(limitedUseKey)}",
+                    "${version.label} - index $index - tap ${used + 1} of ${service.usesPerKey} - KCV ${KeyCheckValue.of(limitedUseKey)}",
                     passed = true,
                 )
                 limitedUseKey
             } else {
                 val cardKey = IccKeyDerivation.optionA(issuerMasterKey, account.pan, account.panSequenceNumber)
-                step("Card key", "Option A from the issuer master key · KCV ${KeyCheckValue.of(cardKey)}", passed = true)
+                step("Card key", "Option A from the issuer master key - KCV ${KeyCheckValue.of(cardKey)}", passed = true)
                 CardCryptogram.key(cardKey, version, counter).also {
-                    step("Cryptogram key", "${version.label} · ATC $counter · KCV ${KeyCheckValue.of(it)}", passed = true)
+                    step("Cryptogram key", "${version.label} - ATC $counter - KCV ${KeyCheckValue.of(it)}", passed = true)
                 }
             }
 
@@ -178,7 +178,7 @@ class IssuerHost(
         private fun checkPin(): DeclineReason? {
             val encrypted = request.onlinePin ?: return null
             val verdict = pins?.verify(request.pan, encrypted) ?: return DeclineReason.UNREADABLE_PIN
-            val detail = "KSN ${encrypted.ksn} · ${verdict.check?.description ?: "PIN blocked"} · tries left ${verdict.triesLeft}"
+            val detail = "KSN ${encrypted.ksn} - ${verdict.check?.description ?: "PIN blocked"} - tries left ${verdict.triesLeft}"
             return when {
                 verdict.isVerified -> null.also { step("Online PIN", detail, passed = true) }
                 verdict.check == PinCheck.WRONG_PIN && !verdict.blocked -> DeclineReason.INCORRECT_PIN.also { step("Online PIN", detail, passed = false) }

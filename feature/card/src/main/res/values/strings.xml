@@ -13,7 +13,7 @@
     <string name="card_log_title">Commands answered: %1$d</string>
     <string name="card_log_empty">No commands yet. Run a tap on the payment terminal screen.</string>
     <string name="card_clear_log">Clear</string>
-    <string name="card_sw">SW %1$s · %2$s</string>
+    <string name="card_sw">SW %1$s - %2$s</string>
     <string name="card_command">C: %1$s</string>
     <string name="card_response">R: %1$s</string>
     <string name="card_source_simulated">Simulated</string>

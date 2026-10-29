@@ -56,7 +56,7 @@ class TokenAuthorizationTest {
 
         keys.replenish(service.replenish(wallet.token.token))
         assertThat(tap(phone, amount = 100).isApproved).isTrue()
-        assertThat(responses.last().steps.first { it.title == "Limited-use key" }.detail).contains("index 2 · tap 1 of 3")
+        assertThat(responses.last().steps.first { it.title == "Limited-use key" }.detail).contains("index 2 - tap 1 of 3")
     }
 
     @Test

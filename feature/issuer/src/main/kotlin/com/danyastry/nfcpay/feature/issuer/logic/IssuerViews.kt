@@ -22,7 +22,7 @@ object IssuerViews {
     fun keys(issuerMasterKey: ByteArray, account: IssuerAccount): KeyHierarchy = KeyHierarchy(
         issuerMasterKeyCheck = KeyCheckValue.of(issuerMasterKey),
         cardKeyCheck = KeyCheckValue.of(IccKeyDerivation.optionA(issuerMasterKey, account.pan, account.panSequenceNumber)),
-        cardKeyDerivation = "Option A · PAN and sequence ${"%02d".format(account.panSequenceNumber)}",
+        cardKeyDerivation = "Option A - PAN and sequence ${"%02d".format(account.panSequenceNumber)}",
     )
 
     fun authorization(event: IssuerEvent): AuthorizationView {

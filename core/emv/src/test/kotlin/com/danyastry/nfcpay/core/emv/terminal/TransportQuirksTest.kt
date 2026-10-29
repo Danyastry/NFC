@@ -37,7 +37,7 @@ class TransportQuirksTest {
 
         assertThat(result.outcome).isInstanceOf(TransactionOutcome.Completed::class.java)
         assertThat(result.exchanges.map { it.label }).contains("SELECT PPSE")
-        assertThat(result.exchanges.any { it.label.startsWith("SELECT PPSE · retry with Le") }).isTrue()
+        assertThat(result.exchanges.any { it.label.startsWith("SELECT PPSE - retry with Le") }).isTrue()
     }
 
     @Test

@@ -218,7 +218,7 @@ private fun CompletedDetails(outcome: TransactionOutcome.Completed, tap: Complet
     )
     outcome.online?.let { OnlineSummary(it) }
     Text(stringResource(outcome.decision.decisionRes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-    Text(stringResource(R.string.terminal_card, listOfNotNull(card.scheme?.label, card.label).distinctBy { it.lowercase() }.joinToString(" · ")))
+    Text(stringResource(R.string.terminal_card, listOfNotNull(card.scheme?.label, card.label).distinctBy { it.lowercase() }.joinToString(" - ")))
     Text(stringResource(R.string.terminal_pan, SensitiveData.groupPan(pan)), fontFamily = FontFamily.Monospace)
     Text(
         stringResource(
