@@ -84,7 +84,7 @@ class Type4Tag(
             if (!capabilities.isReadable) return ResponseApdu.status(StatusWord.SECURITY_STATUS_NOT_SATISFIED)
             ndefFile
         }
-        val offset = (command.p1 shl 8) or command.p2
+        val offset = Type4Commands.offsetOf(command) ?: return ResponseApdu.status(StatusWord.INCORRECT_P1_P2)
         if (offset > content.size) return ResponseApdu.status(WRONG_OFFSET)
         val length = minOf(command.le ?: 0, capabilities.maxReadSize, content.size - offset)
         return ResponseApdu.success(content.copyOfRange(offset, offset + length))
@@ -95,7 +95,7 @@ class Type4Tag(
         if (file == Type4Files.CAPABILITY_CONTAINER || !capabilities.isWritable) {
             return ResponseApdu.status(StatusWord.SECURITY_STATUS_NOT_SATISFIED)
         }
-        val offset = (command.p1 shl 8) or command.p2
+        val offset = Type4Commands.offsetOf(command) ?: return ResponseApdu.status(StatusWord.INCORRECT_P1_P2)
         if (command.data.isEmpty() || command.data.size > capabilities.maxWriteSize) return ResponseApdu.status(StatusWord.WRONG_LENGTH)
         if (offset + command.data.size > ndefFile.size) return ResponseApdu.status(WRONG_OFFSET)
         command.data.copyInto(ndefFile, offset)

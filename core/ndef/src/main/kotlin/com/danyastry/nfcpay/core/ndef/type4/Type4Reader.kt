@@ -1,7 +1,6 @@
 package com.danyastry.nfcpay.core.ndef.type4
 
 import com.danyastry.nfcpay.core.emv.apdu.CommandApdu
-import com.danyastry.nfcpay.core.emv.apdu.EmvCommands
 import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu
 import com.danyastry.nfcpay.core.emv.terminal.Exchange
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
@@ -21,6 +20,7 @@ class Type4Reader {
         val length = lengthBytes.toUnsignedInt()
         if (length == 0) throw TagException(TagError.EMPTY)
         if (length > capabilities.maxMessageSize) throw TagException(TagError.MALFORMED_MESSAGE)
+        Type4Commands.requireAddressable(Type4Files.NLEN_SIZE, length)
         val bytes = readBinary(Type4Files.NLEN_SIZE, length, capabilities)
         val message = try {
             NdefMessage.parse(bytes)
@@ -35,9 +35,11 @@ class Type4Reader {
         val capabilities = open()
         if (!capabilities.isWritable) throw TagException(TagError.READ_ONLY)
         if (bytes.size > capabilities.maxMessageSize) throw TagException(TagError.TOO_LARGE)
+        Type4Commands.requireAddressable(Type4Files.NLEN_SIZE, bytes.size)
+        val chunkSize = Type4Commands.writeSize(capabilities)
         updateBinary(0, 0.toBytes(2), "UPDATE BINARY - NLEN 0000")
-        bytes.toList().chunked(capabilities.maxWriteSize).forEachIndexed { index, chunk ->
-            val offset = Type4Files.NLEN_SIZE + index * capabilities.maxWriteSize
+        bytes.toList().chunked(chunkSize).forEachIndexed { index, chunk ->
+            val offset = Type4Files.NLEN_SIZE + index * chunkSize
             updateBinary(offset, chunk.toByteArray(), "UPDATE BINARY - offset $offset - ${chunk.size} bytes")
         }
         updateBinary(0, bytes.size.toBytes(2), "UPDATE BINARY - NLEN ${bytes.size.toBytes(2).toHex()}")
@@ -58,11 +60,11 @@ class Type4Reader {
         }
 
         suspend fun open(): CapabilityContainer {
-            expect("SELECT NDEF application", EmvCommands.select(Type4Files.NDEF_APPLICATION), TagError.NOT_AN_NDEF_TAG)
-            expect("SELECT capability container", selectFile(Type4Files.CAPABILITY_CONTAINER), TagError.NO_CAPABILITY_CONTAINER)
+            expect("SELECT NDEF application", Type4Commands.selectApplication(), TagError.NOT_AN_NDEF_TAG)
+            expect("SELECT capability container", Type4Commands.selectFile(Type4Files.CAPABILITY_CONTAINER), TagError.NO_CAPABILITY_CONTAINER)
             val ccBytes = expect(
                 "READ BINARY - capability container",
-                CommandApdu(0x00, Type4Files.INS_READ_BINARY, 0x00, 0x00, le = CapabilityContainer.LENGTH),
+                Type4Commands.readBinary(0, CapabilityContainer.LENGTH),
                 TagError.NO_CAPABILITY_CONTAINER,
             )
             val cc = try {
@@ -71,7 +73,7 @@ class Type4Reader {
                 throw TagException(TagError.BAD_CAPABILITY_CONTAINER)
             }
             capabilities = cc
-            expect("SELECT NDEF file %04X".format(cc.ndefFileId), selectFile(cc.ndefFileId), TagError.NO_NDEF_FILE)
+            expect("SELECT NDEF file %04X".format(cc.ndefFileId), Type4Commands.selectFile(cc.ndefFileId), TagError.NO_NDEF_FILE)
             return cc
         }
 
@@ -79,10 +81,10 @@ class Type4Reader {
             var data = ByteArray(0)
             while (data.size < length) {
                 val offset = start + data.size
-                val chunk = minOf(cc.maxReadSize, length - data.size, CommandApdu.MAX_SHORT_LE)
+                val chunk = minOf(Type4Commands.readSize(cc), length - data.size)
                 val bytes = expect(
                     "READ BINARY - offset $offset - $chunk bytes",
-                    CommandApdu(0x00, Type4Files.INS_READ_BINARY, offset ushr 8, offset and 0xFF, le = chunk),
+                    Type4Commands.readBinary(offset, chunk),
                     TagError.READ_FAILED,
                 )
                 if (bytes.isEmpty()) throw TagException(TagError.READ_FAILED)
@@ -92,7 +94,7 @@ class Type4Reader {
         }
 
         suspend fun updateBinary(offset: Int, data: ByteArray, label: String) {
-            expect(label, CommandApdu(0x00, Type4Files.INS_UPDATE_BINARY, offset ushr 8, offset and 0xFF, data), TagError.WRITE_FAILED)
+            expect(label, Type4Commands.updateBinary(offset, data), TagError.WRITE_FAILED)
         }
 
         private suspend fun expect(label: String, command: CommandApdu, error: TagError): ByteArray {
@@ -101,7 +103,5 @@ class Type4Reader {
             if (!response.isSuccess) throw TagException(error)
             return response.data
         }
-
-        private fun selectFile(id: Int) = CommandApdu(0x00, Type4Files.INS_SELECT, 0x00, 0x0C, id.toBytes(2))
     }
 }

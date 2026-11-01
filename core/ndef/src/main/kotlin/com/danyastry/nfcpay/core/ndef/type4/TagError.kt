@@ -11,5 +11,6 @@ enum class TagError(val description: String) {
     READ_ONLY("The tag is read-only"),
     TOO_LARGE("The message does not fit on the tag"),
     WRITE_FAILED("Writing the tag failed"),
+    BEYOND_SHORT_OFFSETS("The message goes past the first 32 KB, which short READ BINARY and UPDATE BINARY commands cannot address"),
     TAG_LOST("The tag left the field"),
 }
