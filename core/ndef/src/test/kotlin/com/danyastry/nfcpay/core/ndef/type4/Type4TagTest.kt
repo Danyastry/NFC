@@ -41,6 +41,18 @@ class Type4TagTest {
     }
 
     @Test
+    fun `a P1 with the top bit set is short file addressing, not an offset`() {
+        val tag = Type4Tag(CapabilityContainer(maxNdefFileSize = 0xFFFE))
+        fun send(command: CommandApdu) = ResponseApdu.parse(tag.process(command.encode()))
+        send(selectApp())
+        send(selectFile(0xE104))
+
+        assertThat(send(CommandApdu(0x00, 0xB0, 0x80, 0x00, le = 2)).sw).isEqualTo(StatusWord.INCORRECT_P1_P2)
+        assertThat(send(CommandApdu(0x00, 0xD6, 0x81, 0x00, ByteArray(2))).sw).isEqualTo(StatusWord.INCORRECT_P1_P2)
+        assertThat(send(CommandApdu(0x00, 0xB0, 0x7F, 0xFF, le = 1)).sw).isEqualTo(StatusWord.SUCCESS)
+    }
+
+    @Test
     fun `unknown files, instructions and classes are refused`() {
         send(selectApp())
 

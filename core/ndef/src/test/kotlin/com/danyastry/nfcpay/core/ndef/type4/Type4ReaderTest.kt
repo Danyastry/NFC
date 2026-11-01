@@ -52,6 +52,43 @@ class Type4ReaderTest {
     }
 
     @Test
+    fun `a tag that advertises MLc and MLe above the short APDU limits still works`() = runTest {
+        val tag = Type4Tag(CapabilityContainer(maxReadSize = 0x0400, maxWriteSize = 0x0400, maxNdefFileSize = 0x1000))
+        val long = NdefMessage(TextRecord("z".repeat(900)).toRecord())
+
+        val written = reader.write(LoopbackTransport(tag), long)
+        val read = reader.read(LoopbackTransport(tag))
+
+        assertThat(written.error).isNull()
+        assertThat(written.exchanges.filter { it.command.ins == Type4Files.INS_UPDATE_BINARY }.map { it.command.data.size }.max())
+            .isAtMost(CommandApdu.MAX_SHORT_DATA)
+        assertThat(read.message).isEqualTo(long)
+    }
+
+    @Test
+    fun `a message past the 32 KB of short offsets is refused before the tag is touched`() = runTest {
+        val tag = Type4Tag(CapabilityContainer(maxWriteSize = 0xFF, maxNdefFileSize = 0xFFFE), hello)
+        val huge = NdefMessage(TextRecord("w".repeat(40_000)).toRecord())
+
+        val session = reader.write(LoopbackTransport(tag), huge)
+
+        assertThat(session.error).isEqualTo(TagError.BEYOND_SHORT_OFFSETS)
+        assertThat(session.exchanges.none { it.command.ins == Type4Files.INS_UPDATE_BINARY }).isTrue()
+        assertThat(tag.message).isEqualTo(hello)
+    }
+
+    @Test
+    fun `a stored message past the short offsets is reported instead of misread`() = runTest {
+        val huge = NdefMessage(TextRecord("v".repeat(40_000)).toRecord())
+        val tag = Type4Tag(CapabilityContainer(maxReadSize = 0xFF, maxNdefFileSize = 0xFFFE), huge)
+
+        val session = reader.read(LoopbackTransport(tag))
+
+        assertThat(session.error).isEqualTo(TagError.BEYOND_SHORT_OFFSETS)
+        assertThat(session.exchanges.none { it.command.p1 and 0x80 != 0 }).isTrue()
+    }
+
+    @Test
     fun `reads long messages in MLe chunks`() = runTest {
         val long = NdefMessage(TextRecord("y".repeat(200)).toRecord())
         val tag = Type4Tag(CapabilityContainer(maxReadSize = 0x20), long)
