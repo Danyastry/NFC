@@ -78,4 +78,13 @@ class PinServiceTest {
     fun `unknown cards are treated as blocked`() {
         assertThat(service.verify("4111111111111111", terminal.encryptPin("2468", "4111111111111111")).blocked).isTrue()
     }
+
+    @Test
+    fun `a block bound to a token verifies against the account PIN when told which PAN the terminal used`() {
+        val token = "4900001234567893"
+        val block = terminal.encryptPin("2468", token)
+
+        assertThat(service.verify(pan, block, pinBlockPan = token).isVerified).isTrue()
+        assertThat(service.verify(pan, terminal.encryptPin("2468", token)).isVerified).isFalse()
+    }
 }

@@ -12,15 +12,15 @@ class PinHsm(
     private val pinVerificationKey: ByteArray,
 ) {
 
-    fun verify(encrypted: EncryptedPin, pan: String, pvki: Int, storedPvv: String): PinCheck {
+    fun verify(encrypted: EncryptedPin, accountPan: String, pvki: Int, storedPvv: String, pinBlockPan: String = accountPan): PinCheck {
         if (!encrypted.ksn.isUsable) return PinCheck.BAD_KSN
         val pinKey = AesDukpt.hostWorkingKey(baseDerivationKey, encrypted.ksn, DukptKeyUsage.PIN_ENCRYPTION)
         val pin = try {
-            IsoPinBlock.decipherFormat4(pinKey, encrypted.block, pan)
+            IsoPinBlock.decipherFormat4(pinKey, encrypted.block, pinBlockPan)
         } catch (_: PinBlockException) {
             return PinCheck.BAD_BLOCK
         }
-        return if (VisaPvv.verify(pinVerificationKey, pvki, pin, pan, storedPvv)) PinCheck.VERIFIED else PinCheck.WRONG_PIN
+        return if (VisaPvv.verify(pinVerificationKey, pvki, pin, accountPan, storedPvv)) PinCheck.VERIFIED else PinCheck.WRONG_PIN
     }
 
     fun issuePvv(pin: String, pan: String, pvki: Int): String = VisaPvv.generate(pinVerificationKey, pvki, pin, pan)
