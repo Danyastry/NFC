@@ -4,17 +4,19 @@ import com.danyastry.nfcpay.core.emv.card.CryptogramType
 import com.danyastry.nfcpay.core.emv.card.DemoCards
 import com.danyastry.nfcpay.core.emv.card.VirtualCard
 import com.danyastry.nfcpay.core.emv.hsm.DemoHsm
-import com.danyastry.nfcpay.core.emv.issuer.DemoIssuer
-import com.danyastry.nfcpay.core.emv.issuer.IssuerAuthorizer
-import com.danyastry.nfcpay.core.emv.token.TokenService
-import com.danyastry.nfcpay.core.emv.token.TokenVault
-import com.danyastry.nfcpay.core.nfc.wallet.PhoneWallet
 import com.danyastry.nfcpay.core.emv.terminal.TerminalError
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
-import com.danyastry.nfcpay.feature.terminal.model.CardSource
+import com.danyastry.nfcpay.core.nfc.lab.CardSource
+import com.danyastry.nfcpay.core.nfc.lab.Lab
 import com.danyastry.nfcpay.feature.terminal.model.TerminalPhase
 import com.google.common.truth.Truth.assertThat
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import java.io.Closeable
+import java.io.IOException
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -22,23 +24,18 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
-import java.io.Closeable
-import java.io.IOException
-import java.time.LocalDate
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TerminalViewModelTest {
 
-    private val card = VirtualCard(DemoCards.lab)
+    private val lab = Lab()
+    private val realCard = VirtualCard(DemoCards.lab)
     private lateinit var viewModel: TerminalViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        viewModel = TerminalViewModel(card, today = { LocalDate.of(2026, 10, 23) })
+        viewModel = TerminalViewModel(lab, today = { LocalDate.of(2026, 10, 23) })
     }
 
     @After
@@ -58,13 +55,12 @@ class TerminalViewModelTest {
         assertThat(tap.amount).isEqualTo(725)
         assertThat(tap.maskCardData).isFalse()
         assertThat((tap.result.outcome as TransactionOutcome.Completed).decision).isEqualTo(CryptogramType.ARQC)
-        assertThat(card.atc).isEqualTo(1)
+        assertThat(lab.card.atc.value).isEqualTo(1)
     }
 
     @Test
     fun `the virtual card goes online and real cards do not`() = runTest {
-        val issuer = DemoIssuer.create()
-        val online = TerminalViewModel(card, IssuerAuthorizer(issuer), today = { LocalDate.of(2026, 10, 23) })
+        val online = TerminalViewModel(lab, today = { LocalDate.of(2026, 10, 23) })
 
         online.onTap()
         advanceUntilIdle()
@@ -73,18 +69,17 @@ class TerminalViewModelTest {
 
         online.onSourceChange(CardSource.NFC)
         online.onTap()
-        online.onCardPresented { CardTransport { card.process(it) } }
+        online.onCardPresented { CardTransport { realCard.process(it) } }
         advanceUntilIdle()
         val real = online.state.value.lastTap!!.result.outcome as TransactionOutcome.Completed
         assertThat(real.online).isNull()
-        assertThat(issuer.account(DemoCards.lab.pan, 1)!!.lastAtc).isEqualTo(1)
+        assertThat(lab.issuer.host.account(DemoCards.lab.pan, 1)!!.lastAtc).isEqualTo(1)
     }
 
     @Test
     fun `the phone wallet pays with its token`() = runTest {
-        val tokens = TokenService(TokenVault(), DemoCards.issuerMasterKey)
-        val wallet = PhoneWallet(tokens)
-        val viewModel = TerminalViewModel(card, IssuerAuthorizer(DemoIssuer.create(tokens)), walletCard = wallet::handler, today = { LocalDate.of(2026, 10, 25) })
+        val wallet = lab.wallet
+        val viewModel = TerminalViewModel(lab, today = { LocalDate.of(2026, 10, 25) })
         viewModel.onSourceChange(CardSource.WALLET)
 
         viewModel.onTap()
@@ -102,9 +97,7 @@ class TerminalViewModelTest {
 
     @Test
     fun `asks for a PIN above the limit and sends it encrypted`() = runTest {
-        val issuer = DemoIssuer.create(pins = DemoHsm.pinService())
-        val device = DemoHsm.pinPadDevice()
-        val viewModel = TerminalViewModel(card, IssuerAuthorizer(issuer), encryptPin = device::encryptPin, today = { LocalDate.of(2026, 10, 25) })
+        val viewModel = TerminalViewModel(lab, today = { LocalDate.of(2026, 10, 25) })
         viewModel.onAmountChange("60.00")
 
         viewModel.onTap()
@@ -119,12 +112,12 @@ class TerminalViewModelTest {
         val outcome = viewModel.state.value.lastTap!!.result.outcome as TransactionOutcome.Completed
         assertThat(viewModel.state.value.pinPrompt).isNull()
         assertThat(outcome.online!!.isApproved).isTrue()
-        assertThat(device.nextCounter).isEqualTo(2)
+        assertThat(lab.issuer.events.value.last().response.steps.single { it.title == "Online PIN" }.passed).isTrue()
     }
 
     @Test
     fun `cancelling the PIN pad fails the tap`() = runTest {
-        val viewModel = TerminalViewModel(card, IssuerAuthorizer(DemoIssuer.create(pins = DemoHsm.pinService())), encryptPin = DemoHsm.pinPadDevice()::encryptPin)
+        val viewModel = TerminalViewModel(lab)
         viewModel.onAmountChange("60.00")
 
         viewModel.onTap()
@@ -143,7 +136,7 @@ class TerminalViewModelTest {
 
         assertThat(viewModel.state.value.canTap).isFalse()
         assertThat(viewModel.state.value.lastTap).isNull()
-        assertThat(card.atc).isEqualTo(0)
+        assertThat(lab.card.atc.value).isEqualTo(0)
     }
 
     @Test
@@ -155,7 +148,7 @@ class TerminalViewModelTest {
         var closed = false
         viewModel.onCardPresented {
             object : CardTransport, Closeable {
-                override suspend fun transceive(command: ByteArray) = card.process(command)
+                override suspend fun transceive(command: ByteArray) = realCard.process(command)
                 override fun close() {
                     closed = true
                 }
@@ -175,7 +168,7 @@ class TerminalViewModelTest {
         var opened = false
         viewModel.onCardPresented {
             opened = true
-            CardTransport { card.process(it) }
+            CardTransport { realCard.process(it) }
         }
 
         assertThat(opened).isFalse()

@@ -29,26 +29,21 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.danyastry.nfcpay.core.emv.mask.SensitiveData
-import com.danyastry.nfcpay.core.emv.issuer.ResponseCode
-import com.danyastry.nfcpay.core.emv.terminal.OnlineResponse
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
 import com.danyastry.nfcpay.core.emv.terminal.OnlineResult
 import com.danyastry.nfcpay.core.emv.terminal.TerminalError
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
-import com.danyastry.nfcpay.core.nfc.hce.ApduSource
-import com.danyastry.nfcpay.core.nfc.hce.SharedCard
-import com.danyastry.nfcpay.core.nfc.issuer.SharedIssuer
+import com.danyastry.nfcpay.core.emv.util.Money
+import com.danyastry.nfcpay.core.nfc.lab.AppLab
+import com.danyastry.nfcpay.core.nfc.lab.CardSource
 import com.danyastry.nfcpay.core.nfc.radio.NfcAvailability
 import com.danyastry.nfcpay.core.nfc.reader.IsoDepTransport
-import com.danyastry.nfcpay.core.nfc.pin.SharedPin
 import com.danyastry.nfcpay.core.nfc.reader.ReaderModeEffect
-import com.danyastry.nfcpay.core.nfc.wallet.SharedWallet
 import com.danyastry.nfcpay.core.nfc.ui.ExchangeCard
 import com.danyastry.nfcpay.core.nfc.ui.NfcStatusBanner
 import com.danyastry.nfcpay.core.nfc.ui.rememberNfcAvailability
 import com.danyastry.nfcpay.core.ui.components.SegmentedSelector
 import com.danyastry.nfcpay.feature.terminal.R
-import com.danyastry.nfcpay.feature.terminal.logic.AmountInput
-import com.danyastry.nfcpay.feature.terminal.model.CardSource
 import com.danyastry.nfcpay.feature.terminal.model.TerminalPhase
 import com.danyastry.nfcpay.feature.terminal.state.CompletedTap
 import java.time.format.DateTimeFormatter
@@ -58,17 +53,12 @@ fun TerminalRoute(modifier: Modifier = Modifier) {
     val viewModel: TerminalViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                TerminalViewModel(
-                    simulatedCard = SharedCard.host.handler(ApduSource.SIMULATED),
-                    authorizer = SharedIssuer.link.authorizer,
-                    walletCard = SharedWallet.wallet::handler,
-                    encryptPin = SharedPin.device::encryptPin,
-                )
+                TerminalViewModel(AppLab.lab)
             }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val wallet by SharedWallet.wallet.state.collectAsStateWithLifecycle()
+    val wallet by AppLab.lab.wallet.state.collectAsStateWithLifecycle()
     val nfc = rememberNfcAvailability()
     ReaderModeEffect(enabled = state.phase == TerminalPhase.WAITING_FOR_CARD && nfc.canUseRadio) { isoDep ->
         viewModel.onCardPresented { IsoDepTransport.open(isoDep) }
@@ -213,7 +203,7 @@ private fun CompletedDetails(outcome: TransactionOutcome.Completed, tap: Complet
     val card = outcome.card
     val pan = if (tap.maskCardData) SensitiveData.maskPan(card.pan) else card.pan
     Text(
-        text = "${AmountInput.format(tap.amount)} ${stringResource(R.string.terminal_currency)}",
+        text = "${Money.format(tap.amount)} ${stringResource(R.string.terminal_currency)}",
         style = MaterialTheme.typography.headlineSmall,
     )
     outcome.online?.let { OnlineSummary(it) }
@@ -262,9 +252,7 @@ private fun OnlineSummary(online: OnlineResult) {
 }
 
 @Composable
-private fun responseDescription(code: String): String = when (code) {
-    OnlineResponse.UNABLE_TO_GO_ONLINE -> stringResource(R.string.terminal_unable_online)
-    else -> ResponseCode.entries.firstOrNull { it.code == code }?.description ?: stringResource(R.string.terminal_unknown_code)
-}
+private fun responseDescription(code: String): String =
+    ResponseCode.of(code)?.description ?: stringResource(R.string.terminal_unknown_code)
 
 private val EXPIRY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/yy")

@@ -8,13 +8,14 @@ import com.danyastry.nfcpay.core.emv.issuer.AuthorizationResponse
 import com.danyastry.nfcpay.core.emv.issuer.DeclineReason
 import com.danyastry.nfcpay.core.emv.issuer.DemoIssuer
 import com.danyastry.nfcpay.core.emv.issuer.IssuerAuthorizer
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
 import com.danyastry.nfcpay.core.emv.transport.LoopbackTransport
 import com.danyastry.nfcpay.core.emv.util.hexToBytes
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.io.IOException
 import java.time.LocalDate
+import kotlinx.coroutines.test.runTest
 
 class OnlineFlowTest {
 
@@ -67,7 +68,7 @@ class OnlineFlowTest {
 
         val online = (run(amount = 100, authorizer = offline).outcome as TransactionOutcome.Completed).online!!
 
-        assertThat(online.responseCode).isEqualTo(OnlineResponse.UNABLE_TO_GO_ONLINE)
+        assertThat(online.responseCode).isEqualTo(ResponseCode.UNABLE_TO_GO_ONLINE.code)
         assertThat(online.reachedIssuer).isFalse()
         assertThat(online.finalCryptogram!!.type).isEqualTo(CryptogramType.AAC)
         assertThat(card.lastIssuerAuthentication).isEqualTo(IssuerAuthentication.NOT_PERFORMED)

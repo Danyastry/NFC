@@ -8,6 +8,7 @@ import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu
 import com.danyastry.nfcpay.core.emv.apdu.StatusWord
 import com.danyastry.nfcpay.core.emv.crypto.Arpc
 import com.danyastry.nfcpay.core.emv.dol.Dol
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.tlv.Tlv
@@ -139,7 +140,7 @@ class VirtualCard(
         val authentication = authenticateIssuer(first, values.getValue(EmvTags.ISSUER_AUTHENTICATION_DATA), responseCode)
         val approve = requested == CryptogramType.TC &&
             authentication == IssuerAuthentication.PASSED &&
-            responseCode.contentEquals(APPROVED_CODE)
+            responseCode.contentEquals(ResponseCode.APPROVED.bytes)
         val type = if (approve) CryptogramType.TC else CryptogramType.AAC
         val cvr = CardCryptogram.secondCvr(type, authentication)
         val cryptogram = CardCryptogram.compute(first.key, first.cdolData + command.data, files.aip, atc, cvr, keys.version)
@@ -180,6 +181,5 @@ class VirtualCard(
 
     companion object {
         const val MAX_ATC = 0xFFFF
-        private val APPROVED_CODE = "00".toByteArray(Charsets.US_ASCII)
     }
 }

@@ -1,7 +1,7 @@
 package com.danyastry.nfcpay.feature.terminal.ui
 
+import com.danyastry.nfcpay.core.nfc.lab.CardSource
 import com.danyastry.nfcpay.feature.terminal.logic.AmountInput
-import com.danyastry.nfcpay.feature.terminal.model.CardSource
 import com.danyastry.nfcpay.feature.terminal.model.TerminalPhase
 import com.danyastry.nfcpay.feature.terminal.state.CompletedTap
 import com.danyastry.nfcpay.feature.terminal.state.PinPrompt

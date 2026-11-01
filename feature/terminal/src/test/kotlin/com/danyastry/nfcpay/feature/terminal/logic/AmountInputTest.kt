@@ -19,10 +19,4 @@ class AmountInputTest {
             assertThat(AmountInput.parse(it)).isNull()
         }
     }
-
-    @Test
-    fun `formats minor units`() {
-        assertThat(AmountInput.format(1250)).isEqualTo("12.50")
-        assertThat(AmountInput.format(7)).isEqualTo("0.07")
-    }
 }

@@ -1,5 +1,7 @@
 package com.danyastry.nfcpay.core.emv.issuer
 
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
+
 data class AuthorizationResponse(
     val responseCode: ResponseCode,
     val declineReason: DeclineReason?,

@@ -8,12 +8,6 @@ import org.junit.Test
 class IssuerViewsTest {
 
     @Test
-    fun `formats money in minor units`() {
-        assertThat(IssuerViews.money(250_00)).isEqualTo("250.00")
-        assertThat(IssuerViews.money(5)).isEqualTo("0.05")
-    }
-
-    @Test
     fun `shows a fresh account`() {
         val view = IssuerViews.account(DemoIssuer.account())
 

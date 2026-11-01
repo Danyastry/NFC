@@ -4,6 +4,7 @@ import com.danyastry.nfcpay.core.emv.crypto.IccKeyDerivation
 import com.danyastry.nfcpay.core.emv.crypto.KeyCheckValue
 import com.danyastry.nfcpay.core.emv.issuer.IssuerAccount
 import com.danyastry.nfcpay.core.emv.mask.SensitiveData
+import com.danyastry.nfcpay.core.emv.util.Money
 import com.danyastry.nfcpay.core.nfc.issuer.IssuerEvent
 import com.danyastry.nfcpay.feature.issuer.model.AccountView
 import com.danyastry.nfcpay.feature.issuer.model.AuthorizationView
@@ -11,11 +12,10 @@ import com.danyastry.nfcpay.feature.issuer.model.KeyHierarchy
 
 object IssuerViews {
 
-    fun money(minor: Long): String = "%d.%02d".format(minor / 100, minor % 100)
 
     fun account(account: IssuerAccount): AccountView = AccountView(
         pan = SensitiveData.groupPan(account.pan),
-        balance = money(account.balance),
+        balance = Money.format(account.balance),
         lastAtc = account.lastAtc.takeIf { it != IssuerAccount.NO_TRANSACTIONS }?.toString() ?: "none",
     )
 
@@ -32,7 +32,7 @@ object IssuerViews {
             description = response.declineReason?.description ?: response.responseCode.description,
             isApproved = response.isApproved,
             isReplay = event.isReplay,
-            amount = response.amount?.let(::money),
+            amount = response.amount?.let(Money::format),
             atc = response.atc,
             steps = response.steps,
             timeMillis = event.timeMillis,

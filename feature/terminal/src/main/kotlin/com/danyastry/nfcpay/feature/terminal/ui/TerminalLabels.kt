@@ -3,8 +3,8 @@ package com.danyastry.nfcpay.feature.terminal.ui
 import androidx.annotation.StringRes
 import com.danyastry.nfcpay.core.emv.card.CryptogramType
 import com.danyastry.nfcpay.core.emv.terminal.TerminalError
+import com.danyastry.nfcpay.core.nfc.lab.CardSource
 import com.danyastry.nfcpay.feature.terminal.R
-import com.danyastry.nfcpay.feature.terminal.model.CardSource
 
 @get:StringRes
 val CardSource.labelRes: Int

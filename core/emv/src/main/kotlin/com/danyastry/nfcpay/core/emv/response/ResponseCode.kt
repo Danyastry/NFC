@@ -1,4 +1,4 @@
-package com.danyastry.nfcpay.core.emv.issuer
+package com.danyastry.nfcpay.core.emv.response
 
 enum class ResponseCode(val code: String, val description: String) {
     APPROVED("00", "Approved"),
@@ -9,8 +9,13 @@ enum class ResponseCode(val code: String, val description: String) {
     EXPIRED_CARD("54", "Expired card"),
     RESTRICTED_CARD("62", "Restricted card"),
     SECURITY_VIOLATION("63", "Security violation"),
-    PIN_TRIES_EXCEEDED("75", "PIN tries exceeded");
+    PIN_TRIES_EXCEEDED("75", "PIN tries exceeded"),
+    UNABLE_TO_GO_ONLINE("Z3", "Unable to go online");
 
     val bytes: ByteArray
         get() = code.toByteArray(Charsets.US_ASCII)
+
+    companion object {
+        fun of(code: String): ResponseCode? = entries.firstOrNull { it.code == code }
+    }
 }

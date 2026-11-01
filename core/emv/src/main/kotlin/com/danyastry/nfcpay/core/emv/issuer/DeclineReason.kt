@@ -1,5 +1,7 @@
 package com.danyastry.nfcpay.core.emv.issuer
 
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
+
 enum class DeclineReason(val responseCode: ResponseCode, val description: String) {
     MISSING_DATA(ResponseCode.DO_NOT_HONOR, "Field 55 is missing data the cryptogram covers"),
     UNKNOWN_ACCOUNT(ResponseCode.INVALID_CARD_NUMBER, "No account for this card"),
