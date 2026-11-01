@@ -16,6 +16,7 @@ import java.io.IOException
 class Type4ReaderTest {
 
     private val reader = Type4Reader()
+    private var pending = ByteArray(0)
     private val hello = NdefMessage(TextRecord("Hello, tag").toRecord(), UriRecord("https://www.example.com").toRecord())
 
     @Test
@@ -116,6 +117,29 @@ class Type4ReaderTest {
         assertThat(reader.write(LoopbackTransport(locked), hello).error).isEqualTo(TagError.READ_ONLY)
         val small = Type4Tag(CapabilityContainer(maxNdefFileSize = 20))
         assertThat(reader.write(LoopbackTransport(small), hello).error).isEqualTo(TagError.TOO_LARGE)
+    }
+
+    @Test
+    fun `a tag that hands out the message with 61XX is read in full`() = runTest {
+        val tag = Type4Tag(initial = hello)
+        val chunking = CardTransport { bytes ->
+            val response = ResponseApdu.parse(tag.process(bytes))
+            val command = CommandApdu.parse(bytes)
+            if (command.ins == Type4Files.INS_READ_BINARY && response.data.size > 4) {
+                pending = response.data.copyOfRange(4, response.data.size)
+                ResponseApdu(response.data.copyOfRange(0, 4), 0x6100 or pending.size).encode()
+            } else if (command.ins == 0xC0) {
+                ResponseApdu(pending, StatusWord.SUCCESS).encode()
+            } else {
+                response.encode()
+            }
+        }
+
+        val session = reader.read(chunking)
+
+        assertThat(session.error).isNull()
+        assertThat(session.message).isEqualTo(hello)
+        assertThat(session.exchanges.count { it.label == "GET RESPONSE" }).isAtLeast(1)
     }
 
     @Test

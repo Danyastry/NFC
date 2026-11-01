@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.danyastry.nfcpay.core.emv.apdu.StatusWord
 import com.danyastry.nfcpay.core.emv.mask.SensitiveData
-import com.danyastry.nfcpay.core.emv.terminal.Exchange
+import com.danyastry.nfcpay.core.emv.transport.Exchange
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.util.toHex
 import com.danyastry.nfcpay.core.nfc.R
