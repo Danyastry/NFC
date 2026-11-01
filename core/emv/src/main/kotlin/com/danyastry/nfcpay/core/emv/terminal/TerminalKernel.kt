@@ -14,7 +14,9 @@ import com.danyastry.nfcpay.core.emv.tlv.TlvFormatException
 import com.danyastry.nfcpay.core.emv.tlv.findTag
 import com.danyastry.nfcpay.core.emv.tlv.flatten
 import com.danyastry.nfcpay.core.emv.tlv.valueOf
+import com.danyastry.nfcpay.core.emv.transport.ApduChannel
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
+import com.danyastry.nfcpay.core.emv.transport.ResponseChainException
 import com.danyastry.nfcpay.core.emv.util.Bcd
 import com.danyastry.nfcpay.core.emv.util.hexToBytes
 import com.danyastry.nfcpay.core.emv.util.toHex
@@ -32,7 +34,7 @@ class TerminalKernel(
 ) {
 
     suspend fun run(transport: CardTransport, request: TransactionRequest): TransactionResult {
-        val session = Session(transport)
+        val session = ApduChannel(transport)
         val outcome = try {
             process(session, request)
         } catch (failure: KernelException) {
@@ -43,16 +45,18 @@ class TerminalKernel(
             TransactionOutcome.Failed(TerminalError.MALFORMED_RESPONSE)
         } catch (_: ApduFormatException) {
             TransactionOutcome.Failed(TerminalError.MALFORMED_RESPONSE)
+        } catch (failure: ResponseChainException) {
+            TransactionOutcome.Failed(TerminalError.MALFORMED_RESPONSE, failure.sw)
         }
-        return TransactionResult(session.exchanges.toList(), outcome)
+        return TransactionResult(session.exchanges, outcome)
     }
 
-    private suspend fun process(session: Session, request: TransactionRequest): TransactionOutcome {
+    private suspend fun process(session: ApduChannel, request: TransactionRequest): TransactionOutcome {
         val (candidate, fci) = selectApplication(session)
         val terminalData = terminalData(request).toMutableMap()
 
         val pdol = fci.valueOf(EmvTags.PDOL)?.let(Dol::parse).orEmpty()
-        val gpo = session.exchange("GET PROCESSING OPTIONS", EmvCommands.getProcessingOptions(Dol.build(pdol, terminalData::get)))
+        val gpo = session.exchange(EmvCommands.getProcessingOptions(Dol.build(pdol, terminalData::get)))
         if (!gpo.isSuccess) throw KernelException(TerminalError.PROCESSING_OPTIONS_REFUSED, gpo.sw)
         val (aip, afl, gpoData) = parseProcessingOptions(gpo.data)
 
@@ -73,7 +77,7 @@ class TerminalKernel(
         } else {
             val cdol1 = cardData.valueOf(EmvTags.CDOL1)?.let(Dol::parse) ?: throw KernelException(TerminalError.MISSING_CDOL1)
             val command = EmvCommands.generateAc(CryptogramType.ARQC, Dol.build(cdol1, terminalData::get))
-            val response = session.exchange("GENERATE AC - ARQC", command)
+            val response = session.exchange(command)
             if (!response.isSuccess) throw KernelException(TerminalError.GENERATE_AC_FAILED, response.sw)
             parseGenerateAc(response.data)
         }
@@ -112,7 +116,7 @@ class TerminalKernel(
     }
 
     private suspend fun goOnline(
-        session: Session,
+        session: ApduChannel,
         authorizer: OnlineAuthorizer,
         request: OnlineRequest,
         cardData: List<Tlv>,
@@ -129,20 +133,20 @@ class TerminalKernel(
         terminalData[EmvTags.AUTHORISATION_RESPONSE_CODE] = responseCode.toByteArray(Charsets.US_ASCII)
         response?.issuerAuthenticationData?.let { terminalData[EmvTags.ISSUER_AUTHENTICATION_DATA] = it }
         val requested = if (response?.isApproved == true) CryptogramType.TC else CryptogramType.AAC
-        val reply = session.exchange("GENERATE AC - ${requested.label}", EmvCommands.generateAc(requested, Dol.build(cdol2, terminalData::get)))
+        val reply = session.exchange(EmvCommands.generateAc(requested, Dol.build(cdol2, terminalData::get)))
         if (!reply.isSuccess) throw KernelException(TerminalError.GENERATE_AC_FAILED, reply.sw)
         val final = cryptogram(parseGenerateAc(reply.data), fromProcessingOptions = false)
         return OnlineResult(responseCode, reachedIssuer = response != null, finalCryptogram = final)
     }
 
-    private suspend fun selectApplication(session: Session): Pair<ApplicationCandidate, List<Tlv>> {
-        val ppse = session.exchange("SELECT PPSE", EmvCommands.select(EmvCommands.PPSE))
+    private suspend fun selectApplication(session: ApduChannel): Pair<ApplicationCandidate, List<Tlv>> {
+        val ppse = session.exchange(EmvCommands.select(EmvCommands.PPSE))
         val candidates = if (ppse.isSuccess) directory(ppse.data) else emptyList()
         val ordered = candidates.ifEmpty {
             config.schemes.map { ApplicationCandidate(it.defaultAid.hexToBytes(), null, Int.MAX_VALUE) }
         }
         for (candidate in ordered) {
-            val response = session.exchange("SELECT ${candidate.aid.toHex()}", EmvCommands.select(candidate.aid))
+            val response = session.exchange(EmvCommands.select(candidate.aid))
             if (response.isSuccess) return candidate to BerTlv.parse(response.data)
         }
         throw KernelException(TerminalError.NO_SUPPORTED_APPLICATION)
@@ -179,11 +183,11 @@ class TerminalKernel(
         return Triple(aip, afl, flat)
     }
 
-    private suspend fun readRecords(session: Session, afl: ByteArray): List<Tlv> {
+    private suspend fun readRecords(session: ApduChannel, afl: ByteArray): List<Tlv> {
         if (afl.isEmpty()) return emptyList()
         return AflEntry.parse(afl).flatMap { entry ->
             entry.records.flatMap { number ->
-                val response = session.exchange("READ RECORD - SFI ${entry.sfi} - record $number", EmvCommands.readRecord(entry.sfi, number))
+                val response = session.exchange(EmvCommands.readRecord(entry.sfi, number))
                 if (!response.isSuccess) throw KernelException(TerminalError.READ_RECORD_FAILED, response.sw)
                 BerTlv.parse(response.data).flatten()
             }
@@ -242,40 +246,8 @@ class TerminalKernel(
         EmvTags.TVR to Tvr().encode(),
     )
 
-    private class Session(private val transport: CardTransport) {
-        val exchanges = mutableListOf<Exchange>()
-
-        suspend fun exchange(label: String, command: CommandApdu): ResponseApdu {
-            var response = send(label, command)
-            if (response.sw ushr 8 == WRONG_LE) {
-                val le = expectedLength(response.sw)
-                response = send("$label - retry with Le %02X".format(le and 0xFF), CommandApdu(command.cla, command.ins, command.p1, command.p2, command.data, le))
-            }
-            var data = response.data
-            var fetches = 0
-            while (response.sw ushr 8 == MORE_DATA) {
-                if (++fetches > MAX_GET_RESPONSE) throw KernelException(TerminalError.MALFORMED_RESPONSE, response.sw)
-                response = send("GET RESPONSE", CommandApdu(0x00, GET_RESPONSE, 0x00, 0x00, le = expectedLength(response.sw)))
-                data += response.data
-            }
-            return ResponseApdu(data, response.sw)
-        }
-
-        private suspend fun send(label: String, command: CommandApdu): ResponseApdu {
-            val response = ResponseApdu.parse(transport.transceive(command.encode()))
-            exchanges += Exchange(label, command, response)
-            return response
-        }
-
-        private fun expectedLength(sw: Int): Int = (sw and 0xFF).let { if (it == 0) CommandApdu.MAX_SHORT_LE else it }
-    }
-
     internal companion object {
         val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyMMdd")
-        const val MORE_DATA = 0x61
-        const val WRONG_LE = 0x6C
-        const val GET_RESPONSE = 0xC0
-        const val MAX_GET_RESPONSE = 16
         val ONLINE_PIN_CVM: ByteArray = "420300".hexToBytes()
         val NO_CVM: ByteArray = "3F0000".hexToBytes()
     }

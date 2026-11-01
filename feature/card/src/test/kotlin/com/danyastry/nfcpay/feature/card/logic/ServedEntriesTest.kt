@@ -13,18 +13,6 @@ import org.junit.Test
 class ServedEntriesTest {
 
     @Test
-    fun `labels the commands a terminal sends`() {
-        assertThat(ServedEntries.label(EmvCommands.select(EmvCommands.PPSE).encode())).isEqualTo("SELECT PPSE")
-        assertThat(ServedEntries.label(EmvCommands.select(DemoCards.lab.aid).encode())).isEqualTo("SELECT F04E464350415901")
-        assertThat(ServedEntries.label(EmvCommands.getProcessingOptions(ByteArray(2)).encode())).isEqualTo("GET PROCESSING OPTIONS")
-        assertThat(ServedEntries.label(EmvCommands.readRecord(1, 2).encode())).isEqualTo("READ RECORD - SFI 1 - record 2")
-        assertThat(ServedEntries.label(EmvCommands.generateAc(CryptogramType.ARQC, ByteArray(1)).encode())).isEqualTo("GENERATE AC - ARQC")
-        assertThat(ServedEntries.label(EmvCommands.getData(EmvTags.ATC).encode())).isEqualTo("GET DATA 9F36")
-        assertThat(ServedEntries.label("00200080".hexToBytes())).isEqualTo("CLA 00 INS 20")
-        assertThat(ServedEntries.label("00".hexToBytes())).isEqualTo("Malformed command")
-    }
-
-    @Test
     fun `maps a served command with its status`() {
         val entry = ServedEntries.map(ServedApdu(ApduSource.NFC, "00A40400".hexToBytes(), "6A82".hexToBytes(), timeMillis = 5))
 

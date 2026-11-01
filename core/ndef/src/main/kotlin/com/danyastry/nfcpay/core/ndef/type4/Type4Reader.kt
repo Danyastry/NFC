@@ -1,9 +1,9 @@
 package com.danyastry.nfcpay.core.ndef.type4
 
 import com.danyastry.nfcpay.core.emv.apdu.CommandApdu
-import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu
-import com.danyastry.nfcpay.core.emv.terminal.Exchange
+import com.danyastry.nfcpay.core.emv.transport.ApduChannel
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
+import com.danyastry.nfcpay.core.emv.transport.ResponseChainException
 import com.danyastry.nfcpay.core.emv.util.toBytes
 import com.danyastry.nfcpay.core.emv.util.toHex
 import com.danyastry.nfcpay.core.emv.util.toUnsignedInt
@@ -40,32 +40,32 @@ class Type4Reader {
         updateBinary(0, 0.toBytes(2), "UPDATE BINARY - NLEN 0000")
         bytes.toList().chunked(chunkSize).forEachIndexed { index, chunk ->
             val offset = Type4Files.NLEN_SIZE + index * chunkSize
-            updateBinary(offset, chunk.toByteArray(), "UPDATE BINARY - offset $offset - ${chunk.size} bytes")
+            updateBinary(offset, chunk.toByteArray())
         }
         updateBinary(0, bytes.size.toBytes(2), "UPDATE BINARY - NLEN ${bytes.size.toBytes(2).toHex()}")
         capabilities to message
     }
 
-    private class Session(private val transport: CardTransport) {
-        val exchanges = mutableListOf<Exchange>()
+    private class Session(transport: CardTransport) {
+        private val channel = ApduChannel(transport)
         private var capabilities: CapabilityContainer? = null
 
         suspend fun run(block: suspend Session.() -> Pair<CapabilityContainer, NdefMessage>): TagSession = try {
             val (cc, message) = block()
-            TagSession(exchanges.toList(), cc, message, error = null)
+            TagSession(channel.exchanges, cc, message, error = null)
         } catch (failure: TagException) {
-            TagSession(exchanges.toList(), capabilities, message = null, error = failure.error)
+            TagSession(channel.exchanges, capabilities, message = null, error = failure.error)
         } catch (_: IOException) {
-            TagSession(exchanges.toList(), capabilities, message = null, error = TagError.TAG_LOST)
+            TagSession(channel.exchanges, capabilities, message = null, error = TagError.TAG_LOST)
         }
 
         suspend fun open(): CapabilityContainer {
-            expect("SELECT NDEF application", Type4Commands.selectApplication(), TagError.NOT_AN_NDEF_TAG)
-            expect("SELECT capability container", Type4Commands.selectFile(Type4Files.CAPABILITY_CONTAINER), TagError.NO_CAPABILITY_CONTAINER)
+            expect(Type4Commands.selectApplication(), TagError.NOT_AN_NDEF_TAG, "SELECT NDEF application")
+            expect(Type4Commands.selectFile(Type4Files.CAPABILITY_CONTAINER), TagError.NO_CAPABILITY_CONTAINER, "SELECT capability container")
             val ccBytes = expect(
-                "READ BINARY - capability container",
                 Type4Commands.readBinary(0, CapabilityContainer.LENGTH),
                 TagError.NO_CAPABILITY_CONTAINER,
+                "READ BINARY - capability container",
             )
             val cc = try {
                 CapabilityContainer.parse(ccBytes)
@@ -73,7 +73,7 @@ class Type4Reader {
                 throw TagException(TagError.BAD_CAPABILITY_CONTAINER)
             }
             capabilities = cc
-            expect("SELECT NDEF file %04X".format(cc.ndefFileId), Type4Commands.selectFile(cc.ndefFileId), TagError.NO_NDEF_FILE)
+            expect(Type4Commands.selectFile(cc.ndefFileId), TagError.NO_NDEF_FILE, "SELECT NDEF file %04X".format(cc.ndefFileId))
             return cc
         }
 
@@ -82,24 +82,23 @@ class Type4Reader {
             while (data.size < length) {
                 val offset = start + data.size
                 val chunk = minOf(Type4Commands.readSize(cc), length - data.size)
-                val bytes = expect(
-                    "READ BINARY - offset $offset - $chunk bytes",
-                    Type4Commands.readBinary(offset, chunk),
-                    TagError.READ_FAILED,
-                )
+                val bytes = expect(Type4Commands.readBinary(offset, chunk), TagError.READ_FAILED)
                 if (bytes.isEmpty()) throw TagException(TagError.READ_FAILED)
                 data += bytes
             }
             return data.copyOfRange(0, length)
         }
 
-        suspend fun updateBinary(offset: Int, data: ByteArray, label: String) {
-            expect(label, Type4Commands.updateBinary(offset, data), TagError.WRITE_FAILED)
+        suspend fun updateBinary(offset: Int, data: ByteArray, label: String? = null) {
+            expect(Type4Commands.updateBinary(offset, data), TagError.WRITE_FAILED, label)
         }
 
-        private suspend fun expect(label: String, command: CommandApdu, error: TagError): ByteArray {
-            val response = ResponseApdu.parse(transport.transceive(command.encode()))
-            exchanges += Exchange(label, command, response)
+        private suspend fun expect(command: CommandApdu, error: TagError, label: String? = null): ByteArray {
+            val response = try {
+                if (label == null) channel.exchange(command) else channel.exchange(command, label)
+            } catch (_: ResponseChainException) {
+                throw TagException(error)
+            }
             if (!response.isSuccess) throw TagException(error)
             return response.data
         }

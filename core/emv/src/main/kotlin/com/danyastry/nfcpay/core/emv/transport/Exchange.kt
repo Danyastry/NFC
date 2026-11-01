@@ -1,4 +1,4 @@
-package com.danyastry.nfcpay.core.emv.terminal
+package com.danyastry.nfcpay.core.emv.transport
 
 import com.danyastry.nfcpay.core.emv.apdu.CommandApdu
 import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu

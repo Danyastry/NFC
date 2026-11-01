@@ -6,11 +6,12 @@ import com.danyastry.nfcpay.core.emv.apdu.StatusWord
 import com.danyastry.nfcpay.core.emv.card.CryptogramType
 import com.danyastry.nfcpay.core.emv.card.DemoCards
 import com.danyastry.nfcpay.core.emv.card.VirtualCard
+import com.danyastry.nfcpay.core.emv.transport.ApduChannel
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.LocalDate
+import kotlinx.coroutines.test.runTest
 
 class TransportQuirksTest {
 
@@ -49,7 +50,7 @@ class TransportQuirksTest {
         val result = TerminalKernel().run(endless, request)
 
         assertThat(result.outcome).isEqualTo(TransactionOutcome.Failed(TerminalError.MALFORMED_RESPONSE, 0x6110))
-        assertThat(result.exchanges.count { it.label == "GET RESPONSE" }).isEqualTo(TerminalKernel.MAX_GET_RESPONSE)
+        assertThat(result.exchanges.count { it.label == "GET RESPONSE" }).isEqualTo(ApduChannel.MAX_GET_RESPONSE)
     }
 
     private class ChunkingCard(private val card: VirtualCard, private val chunk: Int) : CardTransport {
