@@ -6,6 +6,7 @@ import com.danyastry.nfcpay.core.emv.apdu.EmvCommands
 import com.danyastry.nfcpay.core.emv.apdu.ResponseApdu
 import com.danyastry.nfcpay.core.emv.card.CryptogramType
 import com.danyastry.nfcpay.core.emv.dol.Dol
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.tlv.Tag
@@ -127,7 +128,7 @@ class TerminalKernel(
         } catch (_: IOException) {
             null
         }
-        val responseCode = response?.responseCode ?: OnlineResponse.UNABLE_TO_GO_ONLINE
+        val responseCode = response?.responseCode ?: ResponseCode.UNABLE_TO_GO_ONLINE.code
         val cdol2 = cardData.valueOf(EmvTags.CDOL2)?.let(Dol::parse)
             ?: return OnlineResult(responseCode, reachedIssuer = response != null, finalCryptogram = null)
         terminalData[EmvTags.AUTHORISATION_RESPONSE_CODE] = responseCode.toByteArray(Charsets.US_ASCII)

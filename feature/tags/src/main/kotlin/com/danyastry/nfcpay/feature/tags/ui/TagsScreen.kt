@@ -26,10 +26,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.danyastry.nfcpay.core.nfc.lab.AppLab
 import com.danyastry.nfcpay.core.nfc.radio.NfcAvailability
 import com.danyastry.nfcpay.core.nfc.reader.TagReaderEffect
 import com.danyastry.nfcpay.core.nfc.tag.NdefTagReader
-import com.danyastry.nfcpay.core.nfc.tag.SharedTag
 import com.danyastry.nfcpay.core.nfc.ui.ExchangeCard
 import com.danyastry.nfcpay.core.nfc.ui.NfcStatusBanner
 import com.danyastry.nfcpay.core.nfc.ui.rememberNfcAvailability
@@ -43,7 +43,7 @@ import com.danyastry.nfcpay.feature.tags.state.TagResult
 
 @Composable
 fun TagsRoute(modifier: Modifier = Modifier) {
-    val viewModel: TagsViewModel = viewModel(factory = viewModelFactory { initializer { TagsViewModel(SharedTag.tag) } })
+    val viewModel: TagsViewModel = viewModel(factory = viewModelFactory { initializer { TagsViewModel(AppLab.lab.tag) } })
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nfc = rememberNfcAvailability()
     TagReaderEffect(enabled = state.waitingForTag && nfc.canUseRadio) { tag ->

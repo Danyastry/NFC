@@ -27,14 +27,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.danyastry.nfcpay.core.nfc.wallet.SharedWallet
+import com.danyastry.nfcpay.core.nfc.lab.AppLab
 import com.danyastry.nfcpay.feature.tokens.R
 import com.danyastry.nfcpay.feature.tokens.model.VaultEntry
 import com.danyastry.nfcpay.feature.tokens.model.WalletView
 
 @Composable
 fun TokensRoute(modifier: Modifier = Modifier) {
-    val viewModel: TokensViewModel = viewModel(factory = viewModelFactory { initializer { TokensViewModel(SharedWallet.wallet) } })
+    val viewModel: TokensViewModel = viewModel(factory = viewModelFactory { initializer { TokensViewModel(AppLab.lab.wallet) } })
     val state by viewModel.state.collectAsStateWithLifecycle()
     TokensScreen(
         state = state,

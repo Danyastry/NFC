@@ -35,7 +35,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.danyastry.nfcpay.core.emv.apdu.StatusWord
 import com.danyastry.nfcpay.core.nfc.hce.ApduSource
 import com.danyastry.nfcpay.core.nfc.hce.CardEmulationStatus
-import com.danyastry.nfcpay.core.nfc.hce.SharedCard
+import com.danyastry.nfcpay.core.nfc.lab.AppLab
 import com.danyastry.nfcpay.core.nfc.radio.NfcAvailability
 import com.danyastry.nfcpay.core.nfc.ui.NfcStatusBanner
 import com.danyastry.nfcpay.core.nfc.ui.rememberNfcAvailability
@@ -46,7 +46,7 @@ import com.danyastry.nfcpay.feature.card.model.ServedEntry
 @Composable
 fun CardRoute(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val viewModel: CardViewModel = viewModel(factory = viewModelFactory { initializer { CardViewModel(SharedCard.host) } })
+    val viewModel: CardViewModel = viewModel(factory = viewModelFactory { initializer { CardViewModel(AppLab.lab.card) } })
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nfc = rememberNfcAvailability()
     var checks by remember { mutableIntStateOf(0) }

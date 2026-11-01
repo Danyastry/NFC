@@ -6,10 +6,11 @@ import com.danyastry.nfcpay.core.emv.card.CryptogramType
 import com.danyastry.nfcpay.core.emv.card.IssuerApplicationData
 import com.danyastry.nfcpay.core.emv.crypto.Arpc
 import com.danyastry.nfcpay.core.emv.dol.Dol
+import com.danyastry.nfcpay.core.emv.dol.DolEntry
 import com.danyastry.nfcpay.core.emv.hsm.PinCheck
 import com.danyastry.nfcpay.core.emv.hsm.PinService
-import com.danyastry.nfcpay.core.emv.dol.DolEntry
 import com.danyastry.nfcpay.core.emv.mask.SensitiveData
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
 import com.danyastry.nfcpay.core.emv.tags.EmvTags
 import com.danyastry.nfcpay.core.emv.tlv.BerTlv
 import com.danyastry.nfcpay.core.emv.tlv.Tag
@@ -18,6 +19,7 @@ import com.danyastry.nfcpay.core.emv.token.DetokenizeResult
 import com.danyastry.nfcpay.core.emv.token.TokenDomain
 import com.danyastry.nfcpay.core.emv.token.TokenService
 import com.danyastry.nfcpay.core.emv.util.Bcd
+import com.danyastry.nfcpay.core.emv.util.Money
 import com.danyastry.nfcpay.core.emv.util.toHex
 import com.danyastry.nfcpay.core.emv.util.toUnsignedInt
 import java.time.YearMonth
@@ -101,7 +103,7 @@ class IssuerHost(
             val responseCode = reason?.responseCode ?: ResponseCode.APPROVED
             if (reason == null) {
                 accounts[key(account.pan, account.panSequenceNumber)] = counted.copy(balance = account.balance - requested)
-                step("Funds", "${money(requested)} of ${money(account.balance)} available", passed = true)
+                step("Funds", "${Money.format(requested)} of ${Money.format(account.balance)} available", passed = true)
             } else {
                 step(reason.description, responseCode.description, passed = false)
             }
@@ -175,8 +177,6 @@ class IssuerHost(
     }
 
     private fun key(pan: String, panSequenceNumber: Int) = "$pan/$panSequenceNumber"
-
-    private fun money(minor: Long): String = "%d.%02d".format(minor / 100, minor % 100)
 
     private companion object {
         val REQUIRED_TAGS = listOf(

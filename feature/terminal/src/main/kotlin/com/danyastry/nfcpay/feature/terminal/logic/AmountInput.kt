@@ -12,6 +12,4 @@ object AmountInput {
         val minor = match.groupValues[2].padEnd(2, '0').toLong()
         return (major * 100 + minor).takeIf { it in 1..TransactionRequest.MAX_AMOUNT }
     }
-
-    fun format(minor: Long): String = "%d.%02d".format(minor / 100, minor % 100)
 }

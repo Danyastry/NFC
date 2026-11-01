@@ -1,4 +1,4 @@
-package com.danyastry.nfcpay.feature.terminal.model
+package com.danyastry.nfcpay.core.nfc.lab
 
 enum class CardSource {
     SIMULATED,

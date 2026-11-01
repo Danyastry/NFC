@@ -1,6 +1,7 @@
 package com.danyastry.nfcpay.feature.terminal.ui
 
-import com.danyastry.nfcpay.feature.terminal.model.CardSource
+import com.danyastry.nfcpay.core.nfc.lab.CardSource
+
 
 data class TerminalActions(
     val onSourceChange: (CardSource) -> Unit,

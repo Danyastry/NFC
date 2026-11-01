@@ -19,7 +19,6 @@
     <string name="terminal_issuer_answer">Issuer: %1$s - %2$s</string>
     <string name="terminal_final_cryptogram">Final cryptogram: %1$s %2$s</string>
     <string name="terminal_card_overruled">The issuer said yes, but the card could not verify the ARPC and declined</string>
-    <string name="terminal_unable_online">Unable to go online</string>
     <string name="terminal_unknown_code">Unknown response code</string>
     <string name="terminal_decision_arqc">First cryptogram: ARQC, the card asks to go online</string>
     <string name="terminal_decision_tc">TC: the card approved offline</string>

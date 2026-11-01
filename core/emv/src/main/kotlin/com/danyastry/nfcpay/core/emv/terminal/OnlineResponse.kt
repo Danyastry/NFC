@@ -1,5 +1,7 @@
 package com.danyastry.nfcpay.core.emv.terminal
 
+import com.danyastry.nfcpay.core.emv.response.ResponseCode
+
 class OnlineResponse(
     val responseCode: String,
     val issuerAuthenticationData: ByteArray?,
@@ -9,10 +11,5 @@ class OnlineResponse(
     }
 
     val isApproved: Boolean
-        get() = responseCode == APPROVED
-
-    companion object {
-        const val APPROVED = "00"
-        const val UNABLE_TO_GO_ONLINE = "Z3"
-    }
+        get() = responseCode == ResponseCode.APPROVED.code
 }

@@ -10,12 +10,13 @@ import com.danyastry.nfcpay.core.emv.terminal.TerminalKernel
 import com.danyastry.nfcpay.core.emv.terminal.TransactionOutcome
 import com.danyastry.nfcpay.core.emv.terminal.TransactionRequest
 import com.danyastry.nfcpay.core.emv.transport.CardTransport
+import com.danyastry.nfcpay.core.nfc.lab.AppLab
 import com.danyastry.nfcpay.core.nfc.tag.TagEmulationService
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDate
+import kotlinx.coroutines.test.runTest
 
 @RunWith(AndroidJUnit4::class)
 class PaymentCardServiceTest {
@@ -43,7 +44,7 @@ class PaymentCardServiceTest {
     fun serviceAnswersAFullTransaction() = runTest {
         lateinit var service: PaymentCardService
         InstrumentationRegistry.getInstrumentation().runOnMainSync { service = PaymentCardService() }
-        val before = SharedCard.host.atc.value
+        val before = AppLab.lab.card.atc.value
         val transport = CardTransport { command -> service.processCommandApdu(command, null) }
 
         val result = TerminalKernel().run(transport, TransactionRequest(amount = 250, date = LocalDate.now()))
@@ -51,7 +52,7 @@ class PaymentCardServiceTest {
 
         val outcome = result.outcome as TransactionOutcome.Completed
         assertThat(outcome.decision).isEqualTo(CryptogramType.ARQC)
-        assertThat(SharedCard.host.atc.value).isEqualTo(before + 1)
-        assertThat(SharedCard.host.log.value.last().source).isEqualTo(ApduSource.NFC)
+        assertThat(AppLab.lab.card.atc.value).isEqualTo(before + 1)
+        assertThat(AppLab.lab.card.log.value.last().source).isEqualTo(ApduSource.NFC)
     }
 }

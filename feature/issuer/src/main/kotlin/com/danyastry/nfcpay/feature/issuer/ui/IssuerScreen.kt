@@ -31,7 +31,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.danyastry.nfcpay.core.emv.card.DemoCards
 import com.danyastry.nfcpay.core.emv.issuer.DemoIssuer
 import com.danyastry.nfcpay.core.emv.issuer.VerificationStep
-import com.danyastry.nfcpay.core.nfc.issuer.SharedIssuer
+import com.danyastry.nfcpay.core.nfc.lab.AppLab
 import com.danyastry.nfcpay.feature.issuer.R
 import com.danyastry.nfcpay.feature.issuer.model.AccountView
 import com.danyastry.nfcpay.feature.issuer.model.AuthorizationView
@@ -41,7 +41,7 @@ import com.danyastry.nfcpay.feature.issuer.model.KeyHierarchy
 fun IssuerRoute(modifier: Modifier = Modifier) {
     val viewModel: IssuerViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { IssuerViewModel(SharedIssuer.link, DemoCards.issuerMasterKey, DemoIssuer.account()) }
+            initializer { IssuerViewModel(AppLab.lab.issuer, DemoCards.issuerMasterKey, DemoIssuer.account()) }
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
