@@ -17,10 +17,10 @@ class PinService(
     fun record(pan: String): PinRecord? = records[pan]
 
     @Synchronized
-    fun verify(pan: String, encrypted: EncryptedPin): PinVerdict {
+    fun verify(pan: String, encrypted: EncryptedPin, pinBlockPan: String = pan): PinVerdict {
         val record = records[pan] ?: return PinVerdict(check = null, triesLeft = 0, blocked = true)
         if (record.isBlocked) return PinVerdict(check = null, triesLeft = 0, blocked = true)
-        val check = hsm.verify(encrypted, pan, record.pvki, record.pvv)
+        val check = hsm.verify(encrypted, pan, record.pvki, record.pvv, pinBlockPan)
         val updated = when (check) {
             PinCheck.VERIFIED -> record.copy(triesLeft = tryLimit)
             PinCheck.WRONG_PIN -> record.copy(triesLeft = record.triesLeft - 1)
